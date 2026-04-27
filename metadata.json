@@ -1,0 +1,6 @@
+{
+  "name": "Manutenção do Salão",
+  "description": "Sistema para gestão de manutenção preventiva e designação de equipes para o Salão do Reino. Controle de voluntários, líderes e homens-chave por área técnica.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

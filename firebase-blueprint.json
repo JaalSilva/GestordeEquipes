@@ -1,0 +1,33 @@
+{
+  "entities": {
+    "AreaDesignation": {
+      "title": "Designação de Área",
+      "description": "Controle de equipe para uma área de manutenção",
+      "type": "object",
+      "properties": {
+        "areaId": { "type": "string" },
+        "keyMan": { "type": "string" },
+        "leader": { "type": "string" },
+        "volunteers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "congregation": { "type": "string" }
+            },
+            "required": ["name", "congregation"]
+          }
+        },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["areaId", "keyMan", "leader", "volunteers"]
+    }
+  },
+  "firestore": {
+    "/designations/{areaId}": {
+      "schema": "AreaDesignation",
+      "description": "Armazena a equipe atual para cada área"
+    }
+  }
+}

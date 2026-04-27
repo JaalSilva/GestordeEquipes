@@ -1,0 +1,63 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Phase 3: Primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Helper for Area validation
+    function isValidArea(areaId) {
+      return areaId in ['predial', 'hidraulica', 'eletrica', 'equipamentos', 'eletronica'];
+    }
+
+    // Pillar 2: Validation Blueprint
+    function isValidDesignation(data) {
+      return data.keys().hasAll(['areaId', 'keyMan', 'leader', 'volunteers', 'updatedAt']) 
+        && data.keys().size() == 5
+        && data.areaId is string && isValidArea(data.areaId)
+        && data.keyMan is string && data.keyMan.size() <= 200
+        && data.leader is string && data.leader.size() <= 200
+        && data.volunteers is list && data.volunteers.size() <= 15
+        && (data.volunteers.size() == 0 || (data.volunteers[0].name is string && data.volunteers[0].congregation is string))
+        && data.updatedAt == request.time;
+    }
+
+    match /designations/{areaId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      
+      allow create: if isSignedIn() 
+        && isValidId(areaId)
+        && areaId == incoming().areaId
+        && isValidDesignation(incoming());
+
+      allow update: if isSignedIn()
+        && isValidId(areaId)
+        && isValidDesignation(incoming())
+        && (
+          // Action: Update Team
+          incoming().diff(existing()).affectedKeys().hasOnly(['keyMan', 'leader', 'volunteers', 'updatedAt'])
+        );
+      
+      allow delete: if false; // Designations should not be deleted, only updated
+    }
+  }
+}
