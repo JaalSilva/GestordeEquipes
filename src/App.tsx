@@ -27,13 +27,15 @@ import { MaintenanceTask, AreaDesignation } from './types';
 // Components
 import TeamManager from './components/TeamManager';
 import MaintenanceGrid from './components/MaintenanceGrid';
+import { SafetyManualView } from './components/SafetyManualView';
+import { RiskAnalysisForm } from './components/RiskAnalysisForm';
 
-import { FileDown, Printer, FileStack } from 'lucide-react';
+import { FileDown, Printer, FileStack, ClipboardCheck } from 'lucide-react';
 import { exportAreaToPDF, exportAllToPDF } from './lib/pdfExport';
 
 export default function App() {
   const [activeAreaId, setActiveAreaId] = useState(AREAS[0].id);
-  const [view, setView] = useState<'schedule' | 'team'>('schedule');
+  const [view, setView] = useState<'schedule' | 'team' | 'manual' | 'risk'>('schedule');
   const [designations, setDesignations] = useState<Record<string, AreaDesignation>>({});
   const [tasks, setTasks] = useState<MaintenanceTask[]>(INITIAL_TASKS);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -124,7 +126,7 @@ export default function App() {
       <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-slate-900 flex items-center justify-between px-4 z-[60]">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 bg-blue-500 rounded-sm" />
-          <h1 className="font-bold text-xs tracking-tight text-white uppercase">Mante-Salão</h1>
+          <h1 className="font-bold text-xs tracking-tight text-white uppercase">Manutenção Salão</h1>
         </div>
         <button 
           onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -139,10 +141,10 @@ export default function App() {
         <div className="p-6 border-b border-slate-800 hidden lg:block">
           <div className="flex items-center gap-2 mb-1">
             <div className="w-3 h-3 bg-blue-500 rounded-sm" />
-            <h1 className="font-bold text-sm tracking-tight text-white uppercase">Mante-Salão</h1>
+            <h1 className="font-bold text-sm tracking-tight text-white uppercase">Manutenção Salão</h1>
           </div>
-          <p className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">
-            Sistema de Controle
+          <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">
+            SISTEMA DE CONTROLE
           </p>
         </div>
 
@@ -153,10 +155,11 @@ export default function App() {
               key={area.id}
               onClick={() => {
                 setActiveAreaId(area.id);
+                if (view === 'manual' || view === 'risk') setView('schedule');
                 setSidebarOpen(false);
               }}
               className={`w-full flex items-center justify-between px-3 py-3 rounded transition-all duration-200 group ${
-                activeAreaId === area.id 
+                activeAreaId === area.id && view !== 'manual' && view !== 'risk'
                 ? 'bg-blue-600 text-white' 
                 : 'hover:bg-slate-800 text-slate-400'
               }`}
@@ -164,11 +167,43 @@ export default function App() {
               <div className="flex items-center gap-3">
                 <span className="font-medium text-sm">{area.name}</span>
               </div>
-              {activeAreaId === area.id && (
+              {activeAreaId === area.id && view !== 'manual' && view !== 'risk' && (
                 <span className="text-[9px] bg-blue-700 px-1.5 py-0.5 rounded font-bold uppercase tracking-tighter">ATIVO</span>
               )}
             </button>
           ))}
+          
+          <div className="pt-4 mt-4 border-t border-slate-800 space-y-1">
+            <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-2 px-2">Documentação</div>
+            <button
+              onClick={() => {
+                setView('manual');
+                setSidebarOpen(false);
+              }}
+              className={`w-full flex items-center gap-3 px-3 py-3 rounded transition-all duration-200 ${
+                view === 'manual' 
+                ? 'bg-blue-600 text-white' 
+                : 'hover:bg-slate-800 text-slate-400'
+              }`}
+            >
+              <Shield className="w-4 h-4" />
+              <span className="font-medium text-sm">Manual de Segurança</span>
+            </button>
+            <button
+              onClick={() => {
+                setView('risk');
+                setSidebarOpen(false);
+              }}
+              className={`w-full flex items-center gap-3 px-3 py-3 rounded transition-all duration-200 ${
+                view === 'risk' 
+                ? 'bg-orange-600 text-white' 
+                : 'hover:bg-slate-800 text-slate-400'
+              }`}
+            >
+              <ClipboardCheck className="w-4 h-4" />
+              <span className="font-medium text-sm">Alto Risco (DC-85)</span>
+            </button>
+          </div>
         </div>
 
         <div className="p-6 mt-auto border-t border-slate-800 bg-slate-900/50 space-y-3">
@@ -198,74 +233,76 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className={`lg:pl-64 min-h-screen flex flex-col pt-16 lg:pt-0`}>
-        <header className="sticky top-0 lg:top-0 bg-slate-50/80 backdrop-blur-md z-40 px-4 lg:px-10 py-6 lg:py-8 flex flex-col md:flex-row md:items-end justify-between border-b border-slate-200 gap-6">
-          <div className="flex flex-col lg:flex-row lg:items-end gap-6 lg:gap-12">
-            <div>
-              <div className="text-[9px] lg:text-xs text-blue-600 font-semibold mb-1 uppercase tracking-widest">
-                {view === 'schedule' ? 'CRONOGRAMA DO SETOR' : 'DESIGNAÇÃO DE EQUIPE'}
-              </div>
-              <h2 className="text-xl lg:text-3xl font-bold text-slate-900 tracking-tight uppercase leading-none">{activeArea.name}</h2>
-            </div>
-            
-            <div className="flex gap-2">
-              <button
-                onClick={() => setView('schedule')}
-                className={`flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded font-bold text-[10px] transition-all border ${
-                  view === 'schedule' 
-                  ? 'bg-blue-600 text-white border-blue-600 shadow-sm' 
-                  : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                <Calendar className="w-3 h-3" />
-                CRONOGRAMA
-              </button>
-              <button
-                onClick={() => setView('team')}
-                className={`flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded font-bold text-[10px] transition-all border ${
-                  view === 'team' 
-                  ? 'bg-blue-600 text-white border-blue-600 shadow-sm' 
-                  : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                <Users className="w-3 h-3" />
-                EQUIPE (15)
-              </button>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="flex flex-1 lg:flex-none bg-white border border-slate-200 rounded p-1 shadow-sm items-center">
-              <button 
-                onClick={handleExportActivePDF}
-                disabled={isExporting}
-                title="Exportar PDF do Setor"
-                className="flex-1 lg:flex-none flex items-center justify-center gap-2 p-2 hover:bg-slate-50 text-slate-600 rounded transition-colors disabled:opacity-30 text-[10px] font-bold"
-              >
-                <Printer className="w-4 h-4" />
-                PDF ATUAL
-              </button>
-              <div className="w-px h-4 bg-slate-100 mx-1" />
-              <button 
-                onClick={handleExportAllPDF}
-                disabled={isExporting}
-                title="Exportar PDF Geral"
-                className="flex-1 lg:flex-none flex items-center justify-center gap-2 p-2 hover:bg-slate-50 text-slate-600 rounded transition-colors disabled:opacity-30 text-[10px] font-bold"
-              >
-                <FileStack className="w-4 h-4" />
-                PDF GERAL
-              </button>
-            </div>
-
-            {isExporting && (
-              <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center">
-                <div className="bg-white p-8 rounded-2xl shadow-2xl flex flex-col items-center gap-4">
-                  <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
-                  <p className="font-bold text-sm uppercase tracking-widest">Gerando Documentos...</p>
+        {view !== 'manual' && view !== 'risk' && (
+          <header className="sticky top-0 lg:top-0 bg-slate-50/80 backdrop-blur-md z-40 px-4 lg:px-10 py-6 lg:py-8 flex flex-col md:flex-row md:items-end justify-between border-b border-slate-200 gap-6">
+            <div className="flex flex-col lg:flex-row lg:items-end gap-6 lg:gap-12">
+              <div>
+                <div className="text-[9px] lg:text-xs text-blue-600 font-semibold mb-1 uppercase tracking-widest">
+                  {view === 'schedule' ? 'CRONOGRAMA DO SETOR' : 'DESIGNAÇÃO DE EQUIPE'}
                 </div>
+                <h2 className="text-xl lg:text-3xl font-bold text-slate-900 tracking-tight uppercase leading-none">{activeArea.name}</h2>
               </div>
-            )}
-          </div>
-        </header>
+              
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setView('schedule')}
+                  className={`flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded font-bold text-[10px] transition-all border ${
+                    view === 'schedule' 
+                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm' 
+                    : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  <Calendar className="w-3 h-3" />
+                  CRONOGRAMA
+                </button>
+                <button
+                  onClick={() => setView('team')}
+                  className={`flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded font-bold text-[10px] transition-all border ${
+                    view === 'team' 
+                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm' 
+                    : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  <Users className="w-3 h-3" />
+                  EQUIPE (15)
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="flex flex-1 lg:flex-none bg-white border border-slate-200 rounded p-1 shadow-sm items-center">
+                <button 
+                  onClick={handleExportActivePDF}
+                  disabled={isExporting}
+                  title="Exportar PDF do Setor"
+                  className="flex-1 lg:flex-none flex items-center justify-center gap-2 p-2 hover:bg-slate-50 text-slate-600 rounded transition-colors disabled:opacity-30 text-[10px] font-bold"
+                >
+                  <Printer className="w-4 h-4" />
+                  PDF ATUAL
+                </button>
+                <div className="w-px h-4 bg-slate-100 mx-1" />
+                <button 
+                  onClick={handleExportAllPDF}
+                  disabled={isExporting}
+                  title="Exportar PDF Geral"
+                  className="flex-1 lg:flex-none flex items-center justify-center gap-2 p-2 hover:bg-slate-50 text-slate-600 rounded transition-colors disabled:opacity-30 text-[10px] font-bold"
+                >
+                  <FileStack className="w-4 h-4" />
+                  PDF GERAL
+                </button>
+              </div>
+
+              {isExporting && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center">
+                  <div className="bg-white p-8 rounded-2xl shadow-2xl flex flex-col items-center gap-4">
+                    <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+                    <p className="font-bold text-sm uppercase tracking-widest">Gerando Documentos...</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </header>
+        )}
 
         <section className="p-4 lg:p-8 flex-1">
           <AnimatePresence mode="wait">
@@ -285,13 +322,17 @@ export default function App() {
                   onTasksChange={updateTasks}
                   designation={designations[activeAreaId]}
                 />
-              ) : (
+              ) : view === 'team' ? (
                 <TeamManager 
                   key={`team-${activeAreaId}`}
                   areaId={activeAreaId} 
                   initialData={designations[activeAreaId]}
                   onDataChange={updateDesignation}
                 />
+              ) : view === 'manual' ? (
+                <SafetyManualView />
+              ) : (
+                <RiskAnalysisForm />
               )}
             </motion.div>
           </AnimatePresence>
