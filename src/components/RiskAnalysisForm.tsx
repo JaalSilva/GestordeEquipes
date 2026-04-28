@@ -3,9 +3,10 @@
  */
 
 import React, { useState } from 'react';
-import { motion } from 'motion/react';
-import { ClipboardCheck, FileDown, Plus, Trash2, AlertCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { ClipboardCheck, FileDown, Plus, Trash2, AlertCircle, Sparkles, Send, Loader2, CheckCircle2 } from 'lucide-react';
 import { exportRiskAnalysisToPDF, RiskAnalysis } from '../lib/riskPDF';
+import { GoogleGenAI, Type } from "@google/genai";
 
 export const RiskAnalysisForm = () => {
   const [formData, setFormData] = useState<RiskAnalysis>({
@@ -19,6 +20,101 @@ export const RiskAnalysisForm = () => {
     revisedBy: '',
     revisedDate: ''
   });
+
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [webhookStatus, setWebhookStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+
+  // --- IA & WEBHOOK IMPLEMENTATION ---
+
+  /**
+   * Captura dados do formulário e usa Gemini para gerar uma análise técnica detalhada em JSON.
+   */
+  const gerarAnalise = async (): Promise<string> => {
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    
+    const prompt = `Analise tecnicamente este formulário de segurança:
+    Serviço: ${formData.serviceDescription}
+    Local: ${formData.location}
+    Etapas: ${JSON.stringify(formData.steps)}
+    
+    Retorne um JSON com:
+    - critical_risk_level: "baixo", "médio" ou "alto"
+    - ai_expert_recommendation: string com recomendação técnica
+    - missing_controls: lista de controles que foram esquecidos
+    - compliance_score: 0-100`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            critical_risk_level: { type: Type.STRING },
+            ai_expert_recommendation: { type: Type.STRING },
+            missing_controls: { type: Type.ARRAY, items: { type: Type.STRING } },
+            compliance_score: { type: Type.NUMBER }
+          },
+          required: ["critical_risk_level", "ai_expert_recommendation", "compliance_score"]
+        }
+      }
+    });
+
+    return response.text || "{}";
+  };
+
+  /**
+   * Envia o relatório completo (Formulário + Análise IA) para o webhook externo.
+   */
+  const enviarRelatorio = async () => {
+    if (!formData.serviceDescription) {
+      alert("Por favor, preencha ao menos a descrição do serviço.");
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setWebhookStatus('loading');
+
+    try {
+      // 1. Obtém a string JSON da IA
+      const resIA = await gerarAnalise();
+      
+      // 2. Converte para JSON válido e mescla com os dados do formulário
+      const analiseIA = JSON.parse(resIA);
+      const payloadCompleto = {
+        timestamp: new Date().toISOString(),
+        formulario: formData,
+        analise_ia: analiseIA,
+        metadata: {
+          system: "Manutenção Salão v3.0",
+          platform: "AI Studio Build"
+        }
+      };
+
+      // 3. Envia automaticamente via HTTP POST para o webhook
+      const response = await fetch("https://SEU_WEBHOOK_AQUI", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payloadCompleto)
+      });
+
+      if (!response.ok) throw new Error("Erro na comunicação com o Webhook");
+
+      setWebhookStatus('success');
+      setTimeout(() => setWebhookStatus('idle'), 3000);
+    } catch (error) {
+      console.error("Erro ao enviar relatório:", error);
+      setWebhookStatus('error');
+      alert("Erro ao processar análise ou enviar para o dashboard externo.");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  // --- END IA & WEBHOOK ---
 
   const addStep = () => {
     if (formData.steps.length < 5) {
@@ -43,24 +139,56 @@ export const RiskAnalysisForm = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+    <div className="space-y-6 max-w-5xl mx-auto pb-12">
+      <div className="flex flex-col md:flex-row items-center justify-between bg-white p-6 rounded-2xl border border-slate-200 shadow-sm gap-4 text-center md:text-left">
         <div className="flex items-center gap-3">
-          <div className="bg-orange-100 p-2 rounded-lg">
-            <ClipboardCheck className="text-orange-600 w-6 h-6" />
+          <div className="bg-orange-100 p-2.5 rounded-xl">
+            <ClipboardCheck className="text-orange-600 w-7 h-7" />
           </div>
           <div>
             <h2 className="text-xl font-bold text-slate-900">Análise de Risco (DC-85)</h2>
-            <p className="text-slate-500 text-xs uppercase tracking-widest font-bold mt-1">Serviços Críticos / Alto Risco</p>
+            <p className="text-slate-500 text-[10px] uppercase tracking-widest font-bold mt-1">Serviços Críticos / Alto Risco</p>
           </div>
         </div>
-        <button
-          onClick={() => exportRiskAnalysisToPDF(formData)}
-          className="flex items-center gap-2 px-6 py-2.5 bg-brand text-white rounded-lg font-bold text-sm hover:bg-brand transition-all shadow-md active:scale-95"
-        >
-          <FileDown className="w-4 h-4" />
-          GERAR PDF
-        </button>
+        
+        <div className="flex flex-wrap justify-center gap-3">
+          <button
+            onClick={enviarRelatorio}
+            disabled={isAnalyzing}
+            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm transition-all shadow-md active:scale-95 disabled:opacity-50 ${
+              webhookStatus === 'success' 
+                ? 'bg-emerald-500 text-white' 
+                : webhookStatus === 'error'
+                ? 'bg-red-500 text-white'
+                : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+            }`}
+          >
+            {isAnalyzing ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                ANALISANDO...
+              </>
+            ) : webhookStatus === 'success' ? (
+              <>
+                <CheckCircle2 className="w-4 h-4" />
+                ENVIADO!
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4" />
+                IA & DASHBOARD
+              </>
+            )}
+          </button>
+
+          <button
+            onClick={() => exportRiskAnalysisToPDF(formData)}
+            className="flex items-center gap-2 px-6 py-2.5 bg-brand text-white rounded-xl font-bold text-sm hover:bg-brand transition-all shadow-md active:scale-95 border-b-4 border-black/10"
+          >
+            <FileDown className="w-4 h-4" />
+            GERAR PDF
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
