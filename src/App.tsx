@@ -51,8 +51,6 @@ export default function App() {
     tasks, 
     designations, 
     meetings, 
-    signIn, 
-    logout,
     updateTask,
     updateDesignation,
     updateMeeting,
@@ -99,34 +97,6 @@ export default function App() {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
         <Loader2 className="w-10 h-10 text-white animate-spin" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4">
-        <div className="w-full max-w-sm bg-slate-800 p-8 rounded-2xl shadow-2xl border border-slate-700 text-center space-y-6">
-          <div className="flex justify-center">
-            <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg transform -rotate-6">
-              <Wrench className="w-8 h-8 text-white" />
-            </div>
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-white tracking-tight">Manutenção Salão</h1>
-            <p className="text-slate-400 text-sm mt-2 font-medium">Gestão Inteligente para Salões do Reino</p>
-          </div>
-          <button 
-            onClick={signIn}
-            className="w-full py-4 bg-white hover:bg-slate-50 text-slate-900 rounded-xl font-bold transition-all transform active:scale-95 flex items-center justify-center gap-3 shadow-xl"
-          >
-            <LogIn className="w-5 h-5" />
-            ENTRAR COM GOOGLE
-          </button>
-          <div className="pt-4 border-t border-slate-700">
-            <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Acesso Restrito aos Designados</p>
-          </div>
-        </div>
       </div>
     );
   }
@@ -194,13 +164,6 @@ export default function App() {
         </div>
         <div className="flex items-center gap-1">
           <button 
-            onClick={logout}
-            className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded"
-            title="Sair"
-          >
-            <LogOut className="w-5 h-5" />
-          </button>
-          <button 
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="p-2 text-white hover:bg-slate-800 rounded"
           >
@@ -217,9 +180,6 @@ export default function App() {
               <div className="w-3 h-3 bg-brand rounded-sm" />
               <h1 className="font-bold text-sm tracking-tight text-white uppercase">Manutenção Salão</h1>
             </div>
-            <button onClick={logout} className="text-slate-500 hover:text-white transition-colors">
-              <LogOut className="w-4 h-4" />
-            </button>
           </div>
           
             <button 

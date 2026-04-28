@@ -9,7 +9,6 @@ import {
   Palette, 
   ShieldCheck, 
   Info, 
-  LogOut,
   ChevronRight,
   ExternalLink,
   Github
@@ -32,7 +31,7 @@ const THEME_COLORS = [
 ];
 
 const ProfileView: React.FC<ProfileViewProps> = ({ themeColor, onThemeChange }) => {
-  const { user, logout } = useFirebase();
+  const { user } = useFirebase();
 
   if (!user) return null;
 
@@ -54,17 +53,10 @@ const ProfileView: React.FC<ProfileViewProps> = ({ themeColor, onThemeChange }) 
           <p className="text-slate-500 font-medium">{user.email}</p>
           <div className="mt-3 flex flex-wrap justify-center md:justify-start gap-2">
             <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-bold uppercase tracking-wider">
-              Administrador
+              Sistema Offline (Modo Local/Mock)
             </span>
           </div>
         </div>
-        <button 
-          onClick={logout}
-          className="flex items-center gap-2 px-6 py-3 bg-slate-100 hover:bg-red-50 hover:text-red-600 text-slate-600 rounded-xl font-bold transition-all"
-        >
-          <LogOut className="w-5 h-5" />
-          Sair da Conta
-        </button>
       </motion.div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

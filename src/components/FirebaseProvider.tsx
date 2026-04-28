@@ -5,13 +5,6 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { 
-  onAuthStateChanged, 
-  User, 
-  signInWithPopup, 
-  GoogleAuthProvider,
-  signOut 
-} from 'firebase/auth';
-import { 
   collection, 
   onSnapshot, 
   query, 
@@ -21,19 +14,17 @@ import {
   serverTimestamp,
   orderBy
 } from 'firebase/firestore';
-import { auth, db, OperationType, handleFirestoreError } from '../lib/firebase';
+import { db, OperationType, handleFirestoreError, usuarioMock } from '../lib/firebase';
 import { MaintenanceTask, AreaDesignation, Meeting, MaintenanceArea } from '../types';
 import { AREAS as INITIAL_AREAS, INITIAL_TASKS } from '../constants';
 
 interface FirebaseContextType {
-  user: User | null;
+  user: typeof usuarioMock;
   loading: boolean;
   tasks: MaintenanceTask[];
   designations: Record<string, AreaDesignation>;
   meetings: Meeting[];
   areas: MaintenanceArea[];
-  signIn: () => Promise<void>;
-  logout: () => Promise<void>;
   updateTask: (task: MaintenanceTask) => Promise<void>;
   updateDesignation: (designation: AreaDesignation) => Promise<void>;
   updateMeeting: (meeting: Meeting) => Promise<void>;
@@ -43,29 +34,13 @@ interface FirebaseContextType {
 const FirebaseContext = createContext<FirebaseContextType | undefined>(undefined);
 
 export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [tasks, setTasks] = useState<MaintenanceTask[]>([]);
   const [designations, setDesignations] = useState<Record<string, AreaDesignation>>({});
   const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [areas, setAreas] = useState<MaintenanceArea[]>(INITIAL_AREAS);
+  const [areas] = useState<MaintenanceArea[]>(INITIAL_AREAS);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      setLoading(false);
-    });
-    return unsubscribe;
-  }, []);
-
-  useEffect(() => {
-    if (!user) {
-      setTasks([]);
-      setDesignations({});
-      setMeetings([]);
-      return;
-    }
-
     // Sync Tasks
     const qTasks = query(collection(db, 'tasks'));
     const unsubTasks = onSnapshot(qTasks, (snapshot) => {
@@ -75,7 +50,6 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
         ts.push(data);
       });
       
-      // If collection is empty, we show initial tasks
       if (ts.length === 0) {
         setTasks(INITIAL_TASKS);
       } else {
@@ -107,16 +81,7 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
       unsubDesignations();
       unsubMeetings();
     };
-  }, [user]);
-
-  const signIn = async () => {
-    const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
-  };
-
-  const logout = async () => {
-    await signOut(auth);
-  };
+  }, []);
 
   const updateTask = async (task: MaintenanceTask) => {
     try {
@@ -161,14 +126,12 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
 
   return (
     <FirebaseContext.Provider value={{
-      user,
+      user: usuarioMock,
       loading,
       tasks,
       designations,
       meetings,
       areas,
-      signIn,
-      logout,
       updateTask,
       updateDesignation,
       updateMeeting,
