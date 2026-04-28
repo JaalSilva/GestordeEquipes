@@ -56,7 +56,7 @@ export const RiskAnalysisForm = () => {
         </div>
         <button
           onClick={() => exportRiskAnalysisToPDF(formData)}
-          className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-lg font-bold text-sm hover:bg-blue-700 transition-all shadow-md active:scale-95"
+          className="flex items-center gap-2 px-6 py-2.5 bg-brand text-white rounded-lg font-bold text-sm hover:bg-brand transition-all shadow-md active:scale-95"
         >
           <FileDown className="w-4 h-4" />
           GERAR PDF
@@ -110,7 +110,7 @@ export const RiskAnalysisForm = () => {
         <div className="bg-slate-50 px-6 py-3 border-b border-slate-200 flex items-center justify-between">
           <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider">Etapas e Riscos</h3>
           {formData.steps.length < 5 && (
-            <button onClick={addStep} className="text-blue-600 hover:text-blue-700 font-bold text-xs flex items-center gap-1">
+            <button onClick={addStep} className="text-brand hover:bg-brand-light font-bold text-xs flex items-center gap-1 px-2 py-1 rounded">
               <Plus className="w-3 h-3" /> ADICIONAR ETAPA
             </button>
           )}

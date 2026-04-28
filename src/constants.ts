@@ -6,11 +6,11 @@
 import { MaintenanceArea, MaintenanceTask } from './types';
 
 export const AREAS: MaintenanceArea[] = [
-  { id: 'predial', name: 'PREDIAL', keyManId: 'valmir', leaderId: '', volunteerIds: [] },
-  { id: 'hidraulica', name: 'HIDRÁULICA', keyManId: 'clodoaldo', leaderId: '', volunteerIds: [] },
-  { id: 'eletrica', name: 'ELÉTRICA', keyManId: 'fernando', leaderId: '', volunteerIds: [] },
-  { id: 'equipamentos', name: 'EQUIPAMENTOS', keyManId: 'alberico', leaderId: '', volunteerIds: [] },
-  { id: 'eletronica', name: 'ELETRÔNICA', keyManId: 'elton', leaderId: '', volunteerIds: [] },
+  { id: 'predial', name: 'PREDIAL', color: '#2563eb', keyManId: 'valmir', leaderId: '', volunteerIds: [] },
+  { id: 'hidraulica', name: 'HIDRÁULICA', color: '#0891b2', keyManId: 'clodoaldo', leaderId: '', volunteerIds: [] },
+  { id: 'eletrica', name: 'ELÉTRICA', color: '#d97706', keyManId: 'fernando', leaderId: '', volunteerIds: [] },
+  { id: 'equipamentos', name: 'EQUIPAMENTOS', color: '#059669', keyManId: 'alberico', leaderId: '', volunteerIds: [] },
+  { id: 'eletronica', name: 'ELETRÔNICA', color: '#7c3aed', keyManId: 'elton', leaderId: '', volunteerIds: [] },
 ];
 
 export const INITIAL_TASKS: MaintenanceTask[] = [

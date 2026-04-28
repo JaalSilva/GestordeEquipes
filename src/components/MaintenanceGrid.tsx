@@ -62,7 +62,7 @@ const MaintenanceGrid = memo(({ areaId, tasks, onTasksChange, designation }: Pro
             placeholder="Novo objeto da manutenção..."
             value={newTaskName}
             onChange={(e) => setNewTaskName(e.target.value)}
-            className="w-full px-4 py-2 border border-slate-200 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all"
+            className="w-full px-4 py-2 border border-slate-200 rounded text-xs focus:outline-none focus:ring-2 focus:ring-brand transition-all"
           />
         </div>
         <select 
@@ -78,7 +78,8 @@ const MaintenanceGrid = memo(({ areaId, tasks, onTasksChange, designation }: Pro
         <button
           onClick={addTask}
           disabled={!newTaskName.trim()}
-          className="px-4 py-2 bg-blue-600 text-white rounded font-bold text-xs hover:bg-blue-700 transition-all disabled:opacity-30 flex items-center gap-2"
+          style={{ backgroundColor: 'var(--area-color)' }}
+          className="px-4 py-2 text-white rounded font-bold text-xs transition-all disabled:opacity-30 flex items-center gap-2 hover:opacity-90"
         >
           <Plus className="w-3 h-3" />
           ADICIONAR SERVIÇO
@@ -112,7 +113,7 @@ const MaintenanceGrid = memo(({ areaId, tasks, onTasksChange, designation }: Pro
                 className={`group transition-colors ${idx % 2 === 1 ? 'bg-slate-50/50' : 'bg-white'} hover:bg-slate-100/50`}
               >
                 <td 
-                  className="px-6 py-4 border-r border-slate-100 border-b text-xs font-bold text-slate-800 relative cursor-pointer select-none active:bg-blue-50"
+                  className="px-6 py-4 border-r border-slate-100 border-b text-xs font-bold text-slate-800 relative cursor-pointer select-none active:bg-brand-light"
                   onMouseDown={() => setActivePressId(task.id)}
                   onMouseUp={() => setActivePressId(null)}
                   onMouseLeave={() => setActivePressId(null)}
@@ -125,8 +126,8 @@ const MaintenanceGrid = memo(({ areaId, tasks, onTasksChange, designation }: Pro
                   </div>
                   
                   {activePressId === task.id && (
-                    <div className="absolute left-6 top-12 bg-slate-900 text-white p-3 rounded shadow-xl z-[100] min-w-[200px] border border-blue-500/30">
-                      <div className="text-[9px] uppercase font-bold text-blue-400 mb-2">Equipe Responsável</div>
+                    <div className="absolute left-6 top-12 bg-slate-900 text-white p-3 rounded shadow-xl z-[100] min-w-[200px] border border-brand/30">
+                      <div className="text-[9px] uppercase font-bold text-brand mb-2">Equipe Responsável</div>
                       <div className="space-y-2">
                         <div>
                           <div className="text-[8px] uppercase font-bold text-slate-500">Homem Chave</div>
@@ -148,14 +149,18 @@ const MaintenanceGrid = memo(({ areaId, tasks, onTasksChange, designation }: Pro
                   return (
                     <td 
                       key={mIdx} 
-                      className={`p-0 border-r border-slate-100 border-b last:border-r-0 transition-all ${isSuggested ? 'bg-blue-50/30' : ''}`}
+                      className={`p-0 border-r border-slate-100 border-b last:border-r-0 transition-all`}
+                      style={isSuggested ? { backgroundColor: 'color-mix(in srgb, var(--area-color), white 90%)' } : {}}
                     >
                       <div 
                         onClick={() => toggleMonth(task.id, mIdx)}
-                        className="w-full h-full min-h-[48px] flex items-center justify-center cursor-pointer hover:bg-blue-50/50"
+                        className="w-full h-full min-h-[48px] flex items-center justify-center cursor-pointer hover:bg-slate-50"
                       >
                         {isSuggested && (
-                          <div className="w-5 h-5 bg-blue-600 rounded flex items-center justify-center shadow-sm">
+                          <div 
+                            className="w-5 h-5 rounded flex items-center justify-center shadow-sm"
+                            style={{ backgroundColor: 'var(--area-color)' }}
+                          >
                             <Check className="w-3 h-3 text-white" strokeWidth={4} />
                           </div>
                         )}
@@ -179,7 +184,12 @@ const MaintenanceGrid = memo(({ areaId, tasks, onTasksChange, designation }: Pro
       
       <div className="p-8 bg-slate-50 border-t border-slate-200">
         <div className="max-w-3xl">
-          <div className="text-[10px] text-blue-600 font-bold uppercase tracking-widest mb-2">Instruções de Manutenção</div>
+          <div 
+            className="text-[10px] font-bold uppercase tracking-widest mb-2"
+            style={{ color: 'var(--area-color)' }}
+          >
+            Instruções de Manutenção
+          </div>
           <p className="text-xs text-slate-500 leading-relaxed font-medium">
             Esta tabela estabelece o programa de manutenção do Salão do Reino. Ela deve ser usada em conjunto com as fichas de trabalho e indica a frequência com que cada item deve ser inspecionado. Os meses indicados acima para execução de cada ficha são apenas uma sugestão. Clique e segure no nome do objeto para ver os responsáveis.
           </p>

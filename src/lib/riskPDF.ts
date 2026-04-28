@@ -30,8 +30,8 @@ export const exportRiskAnalysisToPDF = (data: RiskAnalysis) => {
   doc.text('(O documento Análise de Risco em Serviços no Salão do Reino (DC-85i) deve ser usado quando for preencher este formulário.)', pageWidth / 2, 26, { align: 'center' });
 
   // Fields Table
-  doc.setDrawColor(200);
-  doc.setFillColor(240);
+  doc.setDrawColor(200, 200, 200);
+  doc.setFillColor(240, 240, 240);
   
   const drawField = (label: string, value: string, x: number, y: number, w: number) => {
     doc.rect(x, y, 40, 8, 'F');
@@ -55,7 +55,7 @@ export const exportRiskAnalysisToPDF = (data: RiskAnalysis) => {
   const py = 35;
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(100);
+  doc.setTextColor(100, 100, 100);
   doc.text('ELIMINAÇÃO', px + 30, py + 5, { align: 'center' });
   doc.text('SUBSTITUIÇÃO', px + 30, py + 12, { align: 'center' });
   doc.text('ENGENHARIA', px + 30, py + 19, { align: 'center' });
@@ -66,7 +66,7 @@ export const exportRiskAnalysisToPDF = (data: RiskAnalysis) => {
 
   // Main Grid Header
   const gridY = 75;
-  doc.setFillColor(220);
+  doc.setFillColor(220, 220, 220);
   doc.rect(10, gridY, 80, 10, 'F');
   doc.rect(90, gridY, 80, 10, 'F');
   doc.rect(170, gridY, 117, 10, 'F');
@@ -98,7 +98,7 @@ export const exportRiskAnalysisToPDF = (data: RiskAnalysis) => {
   // Footer
   const footerY = rowY + 5;
   const drawFooterField = (label: string, value: string, x: number, y: number, w: number) => {
-    doc.setFillColor(240);
+    doc.setFillColor(240, 240, 240);
     doc.rect(x, y, w / 2.5, 8, 'F');
     doc.rect(x, y, w / 2.5, 8, 'S');
     doc.setFont('helvetica', 'bold');

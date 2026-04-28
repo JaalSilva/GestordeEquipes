@@ -14,8 +14,8 @@ export const SafetyManualView = () => {
           <h2 className="text-2xl font-bold text-slate-900">{SAFETY_MANUAL.title}</h2>
           <p className="text-slate-500 text-sm mt-1">Normas de Saúde e Segurança - Edição {SAFETY_MANUAL.date}</p>
         </div>
-        <div className="bg-blue-50 p-3 rounded-full">
-          <BookOpen className="text-blue-600 w-6 h-6" />
+        <div className="bg-brand-light p-3 rounded-full">
+          <BookOpen className="text-brand w-6 h-6" />
         </div>
       </div>
 
@@ -30,7 +30,7 @@ export const SafetyManualView = () => {
             >
               <div className="bg-slate-50 px-6 py-4 border-b border-slate-200">
                 <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                  {section.id === 'intro' ? <Info className="w-5 h-5 text-blue-600" /> : 
+                  {section.id === 'intro' ? <Info className="w-5 h-5 text-brand" /> : 
                    section.id === 'cap1' ? <ShieldCheck className="w-5 h-5 text-green-600" /> : 
                    <AlertTriangle className="w-5 h-5 text-orange-600" />}
                   {section.title}
@@ -46,7 +46,7 @@ export const SafetyManualView = () => {
 
                 {section.subsections && section.subsections.map((sub, idx) => (
                   <div key={idx} className="space-y-2">
-                    <h4 className="font-bold text-slate-800 border-l-4 border-blue-600 pl-3">
+                    <h4 className="font-bold text-slate-800 border-l-4 border-brand pl-3">
                       {sub.title}
                     </h4>
                     <p className="text-slate-600 pl-4 whitespace-pre-line">
@@ -60,15 +60,15 @@ export const SafetyManualView = () => {
         </div>
 
         <div className="lg:col-span-4 space-y-6">
-          <div className="bg-blue-600 rounded-xl p-6 text-white shadow-lg">
+          <div className="bg-brand rounded-xl p-6 text-white shadow-lg">
             <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
               <HardHat className="w-5 h-5" />
               Lembrete Vital
             </h3>
-            <p className="text-blue-100 text-sm leading-relaxed">
+            <p className="text-white/80 text-sm leading-relaxed">
               "Jehovah Deus, o 'Grandioso Criador', considera a vida sagrada. Para ele, todos os humanos são preciosos e merecem proteção."
             </p>
-            <div className="mt-4 pt-4 border-t border-blue-500 text-xs italic">
+            <div className="mt-4 pt-4 border-t border-white/20 text-xs italic">
               — Introdução, Parágrafo 2
             </div>
           </div>

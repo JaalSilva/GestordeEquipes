@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { memo, useState, useEffect } from 'react';
+import React, { memo, useState, useEffect } from 'react';
 import { 
   Shield, 
   HardHat, 
@@ -126,8 +126,11 @@ const TeamManager = memo(({ areaId, initialData, onDataChange }: Props) => {
             <div className="mt-1 flex items-center gap-2">
               <div className="flex h-1.5 w-32 bg-slate-100 rounded-full overflow-hidden">
                 <div 
-                  className="h-full bg-blue-600 transition-all duration-500"
-                  style={{ width: `${(volunteers.length / 15) * 100}%` }}
+                  className="h-full transition-all duration-500"
+                  style={{ 
+                    width: `${(volunteers.length / 15) * 100}%`,
+                    backgroundColor: 'var(--area-color)'
+                  }}
                 />
               </div>
               <span className="text-[10px] font-bold text-slate-500">{volunteers.length} / 15</span>
@@ -142,13 +145,15 @@ const TeamManager = memo(({ areaId, initialData, onDataChange }: Props) => {
                 value={newVolunteer}
                 onChange={(e) => setNewVolunteer(e.target.value)}
                 disabled={volunteers.length >= 15}
-                className="px-4 py-2 border border-slate-200 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all disabled:opacity-50 w-full lg:min-w-[200px]"
+                className="px-4 py-2 border border-slate-200 rounded text-xs focus:outline-none transition-all disabled:opacity-50 w-full lg:min-w-[200px]"
+                style={{ '--tw-ring-color': 'var(--area-color)' } as React.CSSProperties}
               />
               <select
                 value={newCongregation}
                 onChange={(e) => setNewCongregation(e.target.value)}
                 disabled={volunteers.length >= 15}
-                className="px-4 py-2 border border-slate-200 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all disabled:opacity-50 w-full lg:min-w-[200px] bg-white text-slate-800 font-medium"
+                className="px-4 py-2 border border-slate-200 rounded text-xs focus:outline-none transition-all disabled:opacity-50 w-full lg:min-w-[200px] bg-white text-slate-800 font-medium"
+                style={{ '--tw-ring-color': 'var(--area-color)' } as React.CSSProperties}
               >
                 <option value="">Selecione a Congregação...</option>
                 {CONGREGATIONS.map(cong => (
@@ -170,7 +175,8 @@ const TeamManager = memo(({ areaId, initialData, onDataChange }: Props) => {
           {volunteers.map((v, index) => (
             <div 
               key={index}
-              className="group border border-slate-200 rounded p-4 flex flex-col justify-center items-center text-center relative hover:bg-slate-50 transition-all hover:border-blue-200"
+              className="group border border-slate-200 rounded p-4 flex flex-col justify-center items-center text-center relative hover:bg-slate-50 transition-all"
+              style={{ borderColor: 'color-mix(in srgb, var(--area-color), #000 0%)' }} // default border
             >
               <button 
                 onClick={() => removeVolunteer(index)}
@@ -180,7 +186,10 @@ const TeamManager = memo(({ areaId, initialData, onDataChange }: Props) => {
               </button>
               <div className="text-xs font-bold text-slate-800 mb-0.5 line-clamp-1">{index + 1}. {v.name}</div>
               <div className="text-[9px] text-slate-400 font-medium uppercase mb-2 line-clamp-1">{v.congregation}</div>
-              <div className="text-[8px] text-blue-500 font-bold uppercase tracking-tighter flex items-center gap-1">
+              <div 
+                className="text-[8px] font-bold uppercase tracking-tighter flex items-center gap-1"
+                style={{ color: 'var(--area-color)' }}
+              >
                 <CheckCircle2 className="w-2 h-2" />
                 TREINADO
               </div>
@@ -200,7 +209,7 @@ const TeamManager = memo(({ areaId, initialData, onDataChange }: Props) => {
         
         <footer className="mt-8 pt-6 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between text-slate-400 text-[10px] font-bold uppercase tracking-widest gap-4">
           <div className="flex gap-4">
-            <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-blue-500"></div> {volunteers.length} Designados</span>
+            <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--area-color)' }}></div> {volunteers.length} Designados</span>
             <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-slate-200"></div> {15 - volunteers.length} Disponíveis</span>
           </div>
           <div>Sistema de Gestão de Voluntários • Ficha S-44</div>

@@ -17,6 +17,7 @@ export interface Volunteer {
 export interface MaintenanceArea {
   id: string;
   name: string;
+  color: string;
   keyManId: string;
   leaderId: string;
   volunteerIds: string[]; // Deprecated if using designates
@@ -38,4 +39,15 @@ export interface AreaDesignation {
   leader: string;
   volunteers: Volunteer[];
   updatedAt?: any;
+}
+
+export interface Meeting {
+  id: string;
+  title: string;
+  date: string; // ISO string (YYYY-MM-DD)
+  startTime: string; // HH:mm
+  endTime: string; // HH:mm
+  location: string;
+  description: string;
+  type: 'emergency' | 'regular' | 'training';
 }

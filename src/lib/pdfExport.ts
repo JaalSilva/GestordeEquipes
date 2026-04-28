@@ -7,6 +7,13 @@ import jsPDF from 'jspdf';
 import { AreaDesignation, MaintenanceArea, MaintenanceTask } from '../types';
 import { AREAS, MONTHS } from '../constants';
 
+const hexToRgb = (hex: string) => {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return { r, g, b };
+};
+
 export const exportAreaToPDF = async (area: MaintenanceArea, designation: AreaDesignation | null, tasks: MaintenanceTask[]) => {
   const doc = new jsPDF('p', 'mm', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -20,8 +27,9 @@ export const exportAreaToPDF = async (area: MaintenanceArea, designation: AreaDe
     minute: '2-digit' 
   });
 
-  const drawHeader = (doc: jsPDF, areaName: string) => {
-    doc.setFillColor(15, 23, 42); // slate-900
+  const drawHeader = (doc: jsPDF, areaName: string, areaColor: string) => {
+    const rgb = hexToRgb(areaColor);
+    doc.setFillColor(rgb.r, rgb.g, rgb.b);
     doc.rect(0, 0, pageWidth, 40, 'F');
     
     doc.setTextColor(255, 255, 255);
@@ -35,7 +43,7 @@ export const exportAreaToPDF = async (area: MaintenanceArea, designation: AreaDe
     doc.text(`Emitido em: ${timestamp}`, pageWidth - 70, 30);
   };
 
-  drawHeader(doc, area.name);
+  drawHeader(doc, area.name, area.color);
   
   // Liderança
   doc.setTextColor(15, 23, 42);
@@ -89,10 +97,15 @@ export const exportAreaToPDF = async (area: MaintenanceArea, designation: AreaDe
     doc.setFontSize(7);
     doc.text(task.frequency, 80, taskY);
 
+    const accentRgb = hexToRgb(area.color);
     MONTHS.forEach((_, i) => {
       const isSuggested = task.suggestedMonths.includes(i);
       if (isSuggested) {
-        doc.setFillColor(isScheduledNow ? 0 : 59, isScheduledNow ? 0 : 130, isScheduledNow ? 0 : 246); // Black dots if highlighted, blue otherwise
+        if (isScheduledNow) {
+          doc.setFillColor(0, 0, 0); 
+        } else {
+          doc.setFillColor(accentRgb.r, accentRgb.g, accentRgb.b);
+        }
         doc.rect(100 + (i * 8) - 1, taskY - 2.5, 4, 3, 'F');
       } else {
         doc.setDrawColor(226, 232, 240);
@@ -103,7 +116,7 @@ export const exportAreaToPDF = async (area: MaintenanceArea, designation: AreaDe
     taskY += 6;
     if (taskY > 275) {
       doc.addPage();
-      drawHeader(doc, area.name);
+      drawHeader(doc, area.name, area.color);
       taskY = 55;
     }
   });
@@ -152,7 +165,7 @@ export const exportAreaToPDF = async (area: MaintenanceArea, designation: AreaDe
     
     if (volY > 275) {
       doc.addPage();
-      drawHeader(doc, area.name);
+      drawHeader(doc, area.name, area.color);
       volY = 50;
     }
   });
@@ -178,8 +191,9 @@ export const exportAllToPDF = async (allDesignations: Record<string, AreaDesigna
     minute: '2-digit' 
   });
 
-  const drawHeader = (doc: jsPDF, areaName: string) => {
-    doc.setFillColor(15, 23, 42); 
+  const drawHeaderAll = (doc: jsPDF, areaName: string, areaColor: string) => {
+    const rgb = hexToRgb(areaColor);
+    doc.setFillColor(rgb.r, rgb.g, rgb.b); 
     doc.rect(0, 0, pageWidth, 40, 'F');
     
     doc.setTextColor(255, 255, 255);
@@ -200,7 +214,7 @@ export const exportAllToPDF = async (allDesignations: Record<string, AreaDesigna
     const areaTasks = allTasks.filter(t => t.areaId === area.id);
     const currentMonthTasks: string[] = [];
     
-    drawHeader(doc, area.name);
+    drawHeaderAll(doc, area.name, area.color);
     
     // Leadership
     doc.setTextColor(15, 23, 42);
@@ -242,9 +256,15 @@ export const exportAllToPDF = async (allDesignations: Record<string, AreaDesigna
       doc.setFontSize(8);
       doc.text(task.name.substring(0, 35), 20, taskY);
       doc.text(task.frequency, 80, taskY);
+      
+      const accentRgb = hexToRgb(area.color);
       MONTHS.forEach((_, ii) => {
         if (task.suggestedMonths.includes(ii)) {
-          doc.setFillColor(isScheduledNow ? 0 : 59, isScheduledNow ? 0 : 130, isScheduledNow ? 0 : 246);
+          if (isScheduledNow) {
+            doc.setFillColor(0, 0, 0);
+          } else {
+            doc.setFillColor(accentRgb.r, accentRgb.g, accentRgb.b);
+          }
           doc.rect(100 + (ii * 8) - 1, taskY - 2.5, 4, 3, 'F');
         } else {
           doc.setDrawColor(226, 232, 240);
