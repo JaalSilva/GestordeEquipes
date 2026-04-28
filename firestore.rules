@@ -6,13 +6,24 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // Phase 3: Primitives
+    // Helper functions
     function isSignedIn() {
       return request.auth != null;
     }
 
-    function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isEmailVerified() && (
+        request.auth.token.email == 'jaazielss@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
     }
 
     function incoming() {
@@ -23,41 +34,82 @@ service cloud.firestore {
       return resource.data;
     }
 
-    // Helper for Area validation
-    function isValidArea(areaId) {
-      return areaId in ['predial', 'hidraulica', 'eletrica', 'equipamentos', 'eletronica'];
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
-    // Pillar 2: Validation Blueprint
+    // Validation Schema Helpers
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email']) &&
+             data.keys().size() <= 10 &&
+             data.uid is string && data.uid == request.auth.uid &&
+             data.email is string && data.email.size() <= 256;
+    }
+
+    function isValidArea(data) {
+      return data.keys().hasAll(['name', 'color']) &&
+             data.keys().size() <= 10 &&
+             data.name is string && data.name.size() <= 100 &&
+             data.color is string && data.color.matches('^#[a-fA-F0-9]{6}$');
+    }
+
+    function isValidTask(data) {
+      return data.keys().hasAll(['areaId', 'name', 'frequency', 'suggestedMonths']) &&
+             data.keys().size() <= 10 &&
+             data.areaId is string && isValidId(data.areaId) &&
+             data.name is string && data.name.size() <= 200 &&
+             data.frequency in ['Mensal', 'Trimestral', 'Semestral', 'Anual'] &&
+             data.suggestedMonths is list && data.suggestedMonths.size() <= 12;
+    }
+
     function isValidDesignation(data) {
-      return data.keys().hasAll(['areaId', 'keyMan', 'leader', 'volunteers', 'updatedAt']) 
-        && data.keys().size() == 5
-        && data.areaId is string && isValidArea(data.areaId)
-        && data.keyMan is string && data.keyMan.size() <= 200
-        && data.leader is string && data.leader.size() <= 200
-        && data.volunteers is list && data.volunteers.size() <= 15
-        && (data.volunteers.size() == 0 || (data.volunteers[0].name is string && data.volunteers[0].congregation is string))
-        && data.updatedAt == request.time;
+      return data.keys().hasAll(['areaId', 'volunteers']) &&
+             data.keys().size() <= 10 &&
+             data.areaId is string && isValidId(data.areaId) &&
+             data.volunteers is list && data.volunteers.size() <= 50;
+    }
+
+    function isValidMeeting(data) {
+      return data.keys().hasAll(['title', 'date', 'startTime', 'endTime', 'type']) &&
+             data.keys().size() <= 15 &&
+             data.title is string && data.title.size() <= 200 &&
+             data.date is string && data.date.matches('^\\d{4}-\\d{2}-\\d{2}$') &&
+             data.type in ['emergency', 'regular', 'training'];
+    }
+
+    // Collection Rules
+    match /users/{userId} {
+      allow get: if isSignedIn();
+      allow list: if isAdmin();
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if isOwner(userId) && isValidUser(incoming()) && 
+                    incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'updatedAt']);
+    }
+
+    match /areas/{areaId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin() && isValidArea(incoming());
+    }
+
+    match /tasks/{taskId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin() && isValidTask(incoming());
     }
 
     match /designations/{areaId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      
-      allow create: if isSignedIn() 
-        && isValidId(areaId)
-        && areaId == incoming().areaId
-        && isValidDesignation(incoming());
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin() && isValidDesignation(incoming());
+    }
 
-      allow update: if isSignedIn()
-        && isValidId(areaId)
-        && isValidDesignation(incoming())
-        && (
-          // Action: Update Team
-          incoming().diff(existing()).affectedKeys().hasOnly(['keyMan', 'leader', 'volunteers', 'updatedAt'])
-        );
-      
-      allow delete: if false; // Designations should not be deleted, only updated
+    match /meetings/{meetingId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin() && isValidMeeting(incoming());
+    }
+    
+    // Admin list
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if false; // Managed via console or admin scripts
     }
   }
 }

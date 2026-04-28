@@ -6,7 +6,7 @@
 import { MaintenanceArea, MaintenanceTask } from './types';
 
 export const AREAS: MaintenanceArea[] = [
-  { id: 'predial', name: 'PREDIAL', color: '#2563eb', keyManId: 'valmir', leaderId: '', volunteerIds: [] },
+  { id: 'predial', name: 'PREDIAL', color: '#ef4444', keyManId: 'valmir', leaderId: '', volunteerIds: [] },
   { id: 'hidraulica', name: 'HIDRÁULICA', color: '#0891b2', keyManId: 'clodoaldo', leaderId: '', volunteerIds: [] },
   { id: 'eletrica', name: 'ELÉTRICA', color: '#d97706', keyManId: 'fernando', leaderId: '', volunteerIds: [] },
   { id: 'equipamentos', name: 'EQUIPAMENTOS', color: '#059669', keyManId: 'alberico', leaderId: '', volunteerIds: [] },

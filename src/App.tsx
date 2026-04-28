@@ -24,10 +24,15 @@ import {
   Printer,
   FileStack,
   ClipboardCheck,
-  LayoutDashboard
+  LayoutDashboard,
+  User as UserIcon,
+  Palette,
+  ShieldCheck,
+  Info
 } from 'lucide-react';
 import { AREAS, INITIAL_TASKS } from './constants';
 import { MaintenanceTask, AreaDesignation, Meeting } from './types';
+import { useFirebase } from './components/FirebaseProvider';
 
 // Components
 import TeamManager from './components/TeamManager';
@@ -35,15 +40,27 @@ import MaintenanceGrid from './components/MaintenanceGrid';
 import { SafetyManualView } from './components/SafetyManualView';
 import { RiskAnalysisForm } from './components/RiskAnalysisForm';
 import { MeetingCalendar } from './components/MeetingCalendar';
+import ProfileView from './components/ProfileView';
 
 import { exportAreaToPDF, exportAllToPDF } from './lib/pdfExport';
 
 export default function App() {
+  const { 
+    user, 
+    loading, 
+    tasks, 
+    designations, 
+    meetings, 
+    signIn, 
+    logout,
+    updateTask,
+    updateDesignation,
+    updateMeeting,
+    deleteMeeting
+  } = useFirebase();
+
   const [activeAreaId, setActiveAreaId] = useState(AREAS[0].id);
-  const [view, setView] = useState<'schedule' | 'team' | 'manual' | 'risk' | 'calendar'>('schedule');
-  const [designations, setDesignations] = useState<Record<string, AreaDesignation>>({});
-  const [tasks, setTasks] = useState<MaintenanceTask[]>(INITIAL_TASKS);
-  const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [view, setView] = useState<'schedule' | 'team' | 'manual' | 'risk' | 'calendar' | 'profile'>('schedule');
   const [themeColor, setThemeColor] = useState<string>(localStorage.getItem('themeColor') || '#2563eb');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -54,33 +71,68 @@ export default function App() {
     AREAS.find(a => a.id === activeAreaId) || AREAS[0],
   [activeAreaId]);
 
-  // Handle local state updates
-  const updateDesignation = useCallback((data: AreaDesignation) => {
-    setDesignations(prev => {
-      // Avoid update if data is identical to prevent loops
-      if (JSON.stringify(prev[data.areaId]) === JSON.stringify(data)) return prev;
-      return {
-        ...prev,
-        [data.areaId]: data
-      };
-    });
-  }, []);
+  // Sync theme
+  useEffect(() => {
+    localStorage.setItem('themeColor', themeColor);
+    document.documentElement.style.setProperty('--primary-color', themeColor);
+    
+    const r = parseInt(themeColor.slice(1, 3), 16);
+    const g = parseInt(themeColor.slice(3, 5), 16);
+    const b = parseInt(themeColor.slice(5, 7), 16);
+    document.documentElement.style.setProperty('--primary-color-light', `rgba(${r}, ${g}, ${b}, 0.1)`);
+    document.documentElement.style.setProperty('--primary-color-hover', themeColor);
+  }, [themeColor]);
 
-  const updateTasks = useCallback((newTasks: MaintenanceTask[]) => {
-    setTasks(prev => {
-      if (JSON.stringify(prev) === JSON.stringify(newTasks)) return prev;
-      return newTasks;
+  // Firebase Handlers
+  const handleUpdateTasks = useCallback((newTasks: MaintenanceTask[]) => {
+    // MaintenanceGrid sends the whole task list usually, or we can update one by one.
+    // For now, let's assume it sends the whole list and we find which one changed.
+    newTasks.forEach(task => {
+      const existing = tasks.find(t => t.id === task.id);
+      if (JSON.stringify(existing) !== JSON.stringify(task)) {
+        updateTask(task);
+      }
     });
-  }, []);
+  }, [tasks, updateTask]);
 
-  // NEW: JSON Backup Export
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <Loader2 className="w-10 h-10 text-white animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4">
+        <div className="w-full max-w-sm bg-slate-800 p-8 rounded-2xl shadow-2xl border border-slate-700 text-center space-y-6">
+          <div className="flex justify-center">
+            <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg transform -rotate-6">
+              <Wrench className="w-8 h-8 text-white" />
+            </div>
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-white tracking-tight">Manutenção Salão</h1>
+            <p className="text-slate-400 text-sm mt-2 font-medium">Gestão Inteligente para Salões do Reino</p>
+          </div>
+          <button 
+            onClick={signIn}
+            className="w-full py-4 bg-white hover:bg-slate-50 text-slate-900 rounded-xl font-bold transition-all transform active:scale-95 flex items-center justify-center gap-3 shadow-xl"
+          >
+            <LogIn className="w-5 h-5" />
+            ENTRAR COM GOOGLE
+          </button>
+          <div className="pt-4 border-t border-slate-700">
+            <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Acesso Restrito aos Designados</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const handleBackupExport = async () => {
-    // 1. Export JSON
-    const backupData = {
-      designations,
-      tasks,
-      meetings
-    };
+    const backupData = { designations, tasks, meetings };
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
     const downloadAnchorNode = document.createElement('a');
     downloadAnchorNode.setAttribute("href", dataStr);
@@ -89,29 +141,32 @@ export default function App() {
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
 
-    // 2. Export PDF
     setIsExporting(true);
-    // Add small delay to ensure UI shows loader if needed
-    await new Promise(resolve => setTimeout(resolve, 500));
     await exportAllToPDF(designations, tasks);
     setIsExporting(false);
   };
 
-  // NEW: JSON Backup Import
   const handleBackupImport = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const json = JSON.parse(e.target?.result as string);
-        if (json.designations) setDesignations(json.designations);
-        if (json.tasks) setTasks(json.tasks);
-        if (json.meetings) setMeetings(json.meetings);
-        alert('Dados importados com sucesso!');
+        // Bulk update to Firestore (simplified for now)
+        if (json.tasks) {
+          for (const task of json.tasks) await updateTask(task);
+        }
+        if (json.designations) {
+          for (const areaId in json.designations) await updateDesignation(json.designations[areaId]);
+        }
+        if (json.meetings) {
+          for (const m of json.meetings) await updateMeeting(m);
+        }
+        alert('Dados importados e sincronizados com sucesso!');
       } catch (err) {
-        alert('Erro ao importar arquivo. Certifique-se de que é um JSON válido gerado pelo sistema.');
+        alert('Erro ao importar arquivo.');
       }
     };
     reader.readAsText(file);
@@ -129,51 +184,6 @@ export default function App() {
     setIsExporting(false);
   };
 
-  // State Persistence for meetings
-  useEffect(() => {
-    const savedDesignations = localStorage.getItem('designations');
-    if (savedDesignations) setDesignations(JSON.parse(savedDesignations));
-    
-    const savedTasks = localStorage.getItem('tasks');
-    if (savedTasks) setTasks(JSON.parse(savedTasks));
-
-    const savedMeetings = localStorage.getItem('meetings');
-    if (savedMeetings) setMeetings(JSON.parse(savedMeetings));
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem('designations', JSON.stringify(designations));
-  }, [designations]);
-
-  useEffect(() => {
-    localStorage.setItem('tasks', JSON.stringify(tasks));
-  }, [tasks]);
-
-  useEffect(() => {
-    localStorage.setItem('meetings', JSON.stringify(meetings));
-  }, [meetings]);
-
-  useEffect(() => {
-    localStorage.setItem('themeColor', themeColor);
-    document.documentElement.style.setProperty('--primary-color', themeColor);
-    
-    // Derive hover and light versions for better UI consistency
-    // Simple hex to rgba for light version
-    const r = parseInt(themeColor.slice(1, 3), 16);
-    const g = parseInt(themeColor.slice(3, 5), 16);
-    const b = parseInt(themeColor.slice(5, 7), 16);
-    document.documentElement.style.setProperty('--primary-color-light', `rgba(${r}, ${g}, ${b}, 0.1)`);
-    document.documentElement.style.setProperty('--primary-color-hover', themeColor); // Could be darkened further
-  }, [themeColor]);
-
-  const addMeeting = useCallback((meeting: Meeting) => {
-    setMeetings(prev => [...prev, meeting]);
-  }, []);
-
-  const deleteMeeting = useCallback((id: string) => {
-    setMeetings(prev => prev.filter(m => m.id !== id));
-  }, []);
-
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans selection:bg-brand selection:text-white">
       {/* Mobile Header */}
@@ -182,24 +192,51 @@ export default function App() {
           <div className="w-3 h-3 bg-brand rounded-sm" />
           <h1 className="font-bold text-xs tracking-tight text-white uppercase">Manutenção Salão</h1>
         </div>
-        <button 
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="p-2 text-white hover:bg-slate-800 rounded"
-        >
-          {sidebarOpen ? <ChevronRight className="w-6 h-6 rotate-180" /> : <Settings className="w-6 h-6" />}
-        </button>
+        <div className="flex items-center gap-1">
+          <button 
+            onClick={logout}
+            className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded"
+            title="Sair"
+          >
+            <LogOut className="w-5 h-5" />
+          </button>
+          <button 
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-2 text-white hover:bg-slate-800 rounded"
+          >
+            {sidebarOpen ? <ChevronRight className="w-6 h-6 rotate-180" /> : <Settings className="w-6 h-6" />}
+          </button>
+        </div>
       </div>
 
       {/* Sidebar Navigation */}
       <nav className={`fixed top-0 left-0 bottom-0 w-64 bg-slate-900 border-r border-slate-700 z-50 flex flex-col transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-6 border-b border-slate-800 hidden lg:block">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-3 h-3 bg-brand rounded-sm" />
-            <h1 className="font-bold text-sm tracking-tight text-white uppercase">Manutenção Salão</h1>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-brand rounded-sm" />
+              <h1 className="font-bold text-sm tracking-tight text-white uppercase">Manutenção Salão</h1>
+            </div>
+            <button onClick={logout} className="text-slate-500 hover:text-white transition-colors">
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
-          <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">
-            SISTEMA DE CONTROLE
-          </p>
+          
+            <button 
+              onClick={() => {
+                setView('profile');
+                setSidebarOpen(false);
+              }}
+              className={`flex items-center gap-3 p-3 w-full bg-slate-800/50 rounded-xl border transition-all ${
+                view === 'profile' ? 'border-brand ring-1 ring-brand' : 'border-slate-700 hover:bg-slate-800'
+              }`}
+            >
+              <img src={user.photoURL || ''} alt="" className="w-8 h-8 rounded-full bg-slate-700" />
+              <div className="min-w-0 text-left">
+                <p className="text-xs font-bold text-white truncate">{user.displayName}</p>
+                <p className="text-[9px] text-slate-500 uppercase tracking-tighter font-bold">Ver Perfil</p>
+              </div>
+            </button>
         </div>
 
           <div className="flex-1 overflow-y-auto px-4 py-8 lg:py-6 space-y-2">
@@ -287,30 +324,6 @@ export default function App() {
         </div>
 
         <div className="p-6 mt-auto border-t border-slate-800 bg-slate-900/50 space-y-4">
-          <div className="space-y-2">
-            <h3 className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-2">Tema do Sistema</h3>
-            <div className="flex gap-2">
-              {[
-                { name: 'Azul', color: '#2563eb' },
-                { name: 'Verde', color: '#16a34a' },
-                { name: 'Roxo', color: '#7c3aed' },
-                { name: 'Indico', color: '#4f39f6' },
-                { name: 'Carmesim', color: '#e11d48' },
-                { name: 'Cinza', color: '#475569' }
-              ].map((c) => (
-                <button
-                  key={c.color}
-                  onClick={() => setThemeColor(c.color)}
-                  title={c.name}
-                  className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 active:scale-95 ${
-                    themeColor === c.color ? 'border-white' : 'border-transparent'
-                  }`}
-                  style={{ backgroundColor: c.color }}
-                />
-              ))}
-            </div>
-          </div>
-
           <input 
             type="file" 
             ref={fileInputRef} 
@@ -342,7 +355,7 @@ export default function App() {
         className={`lg:pl-64 min-h-screen flex flex-col pt-16 lg:pt-0`}
         style={{ '--area-color': activeArea.color } as React.CSSProperties}
       >
-        {view !== 'manual' && view !== 'risk' && view !== 'calendar' && (
+        {view !== 'manual' && view !== 'risk' && view !== 'calendar' && view !== 'profile' && (
           <header className="sticky top-0 lg:top-0 bg-slate-50/80 backdrop-blur-md z-40 px-4 lg:px-10 py-6 lg:py-8 flex flex-col md:flex-row md:items-end justify-between border-b border-slate-200 gap-6">
             <div className="flex flex-col lg:flex-row lg:items-end gap-6 lg:gap-12">
               <div>
@@ -433,7 +446,7 @@ export default function App() {
                   key={`grid-${activeAreaId}`}
                   areaId={activeAreaId} 
                   tasks={tasks}
-                  onTasksChange={updateTasks}
+                  onTasksChange={handleUpdateTasks}
                   designation={designations[activeAreaId]}
                 />
               ) : view === 'team' ? (
@@ -448,8 +461,13 @@ export default function App() {
               ) : view === 'calendar' ? (
                 <MeetingCalendar 
                   meetings={meetings} 
-                  onAddMeeting={addMeeting} 
+                  onAddMeeting={updateMeeting} 
                   onDeleteMeeting={deleteMeeting} 
+                />
+              ) : view === 'profile' ? (
+                <ProfileView 
+                  themeColor={themeColor} 
+                  onThemeChange={setThemeColor} 
                 />
               ) : (
                 <RiskAnalysisForm />

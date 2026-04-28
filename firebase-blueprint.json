@@ -1,8 +1,48 @@
 {
   "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User account information and roles.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "user"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email"]
+    },
+    "MaintenanceArea": {
+      "title": "Maintenance Area",
+      "description": "A specific sector or area of maintenance.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "color": { "type": "string" },
+        "keyManId": { "type": "string" },
+        "leaderId": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "color"]
+    },
+    "MaintenanceTask": {
+      "title": "Maintenance Task",
+      "description": "A scheduled maintenance operation.",
+      "type": "object",
+      "properties": {
+        "areaId": { "type": "string" },
+        "name": { "type": "string" },
+        "frequency": { "type": "string", "enum": ["Mensal", "Trimestral", "Semestral", "Anual"] },
+        "suggestedMonths": { "type": "array", "items": { "type": "number" } },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["areaId", "name", "frequency", "suggestedMonths"]
+    },
     "AreaDesignation": {
-      "title": "Designação de Área",
-      "description": "Controle de equipe para uma área de manutenção",
+      "title": "Area Designation",
+      "description": "Assignment of persons to an area.",
       "type": "object",
       "properties": {
         "areaId": { "type": "string" },
@@ -15,19 +55,49 @@
             "properties": {
               "name": { "type": "string" },
               "congregation": { "type": "string" }
-            },
-            "required": ["name", "congregation"]
+            }
           }
         },
         "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Meeting": {
+      "title": "Meeting",
+      "description": "A scheduled meeting or training event.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "date": { "type": "string" },
+        "startTime": { "type": "string" },
+        "endTime": { "type": "string" },
+        "location": { "type": "string" },
+        "description": { "type": "string" },
+        "type": { "type": "string", "enum": ["emergency", "regular", "training"] },
+        "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["areaId", "keyMan", "leader", "volunteers"]
+      "required": ["title", "date", "startTime", "endTime", "type"]
     }
   },
   "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles."
+    },
+    "/areas/{areaId}": {
+      "schema": "MaintenanceArea",
+      "description": "Maintenance sectors."
+    },
+    "/tasks/{taskId}": {
+      "schema": "MaintenanceTask",
+      "description": "Maintenance services."
+    },
     "/designations/{areaId}": {
       "schema": "AreaDesignation",
-      "description": "Armazena a equipe atual para cada área"
+      "description": "Team assignments per area."
+    },
+    "/meetings/{meetingId}": {
+      "schema": "Meeting",
+      "description": "Calendar events."
     }
   }
 }
