@@ -13,7 +13,8 @@ import {
   MapPin, 
   Trash2, 
   FileDown,
-  Info
+  Info,
+  Mail
 } from 'lucide-react';
 import { Meeting } from '../types';
 import { exportMeetingsToPDF } from '../lib/meetingPDF';
@@ -31,6 +32,27 @@ export const MeetingCalendar: React.FC<MeetingCalendarProps> = ({
 }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isAdding, setIsAdding] = useState(false);
+
+  const handleSendEmail = () => {
+    if (meetings.length === 0) {
+      alert("Não há reuniões agendadas para enviar.");
+      return;
+    }
+
+    const meetingText = meetings
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map(m => {
+        const date = new Date(m.date + 'T00:00:00').toLocaleDateString('pt-BR');
+        return `📅 ${m.title}\n🗓️ Data: ${date}\n⏰ Horário: ${m.startTime} às ${m.endTime}\n📍 Local: ${m.location || 'Não informado'}\n📝 Descrição: ${m.description || '-'}\n--------------------------`;
+      })
+      .join('\n\n');
+
+    const subject = encodeURIComponent("Agenda de Reuniões - Manutenção Salão");
+    const body = encodeURIComponent(`Olá,\n\nSegue a agenda de reuniões de manutenção:\n\n${meetingText}\n\nEnviado via Sistema de Manutenção.`);
+
+    window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
+  };
+
   const [newMeeting, setNewMeeting] = useState<Partial<Meeting>>({
     type: 'regular',
     startTime: '08:00',
@@ -101,6 +123,13 @@ export const MeetingCalendar: React.FC<MeetingCalendarProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          <button 
+            onClick={handleSendEmail}
+            className="flex items-center gap-2 px-4 py-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors font-bold text-xs border border-indigo-100 bg-white"
+          >
+            <Mail className="w-4 h-4" />
+            ENVIAR POR E-MAIL
+          </button>
           <button 
             onClick={() => exportMeetingsToPDF(meetings)}
             className="flex items-center gap-2 px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors font-bold text-xs border border-slate-200 bg-white"
