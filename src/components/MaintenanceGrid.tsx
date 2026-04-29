@@ -25,10 +25,31 @@ const MaintenanceGrid = memo(({ areaId, tasks, onTasksChange, designation }: Pro
   const toggleMonth = (taskId: string, monthIndex: number) => {
     const updatedTasks = tasks.map(t => {
       if (t.id === taskId) {
-        const months = t.suggestedMonths.includes(monthIndex)
+        const isSuggested = t.suggestedMonths.includes(monthIndex);
+        const months = isSuggested
           ? t.suggestedMonths.filter(m => m !== monthIndex)
           : [...t.suggestedMonths, monthIndex];
         return { ...t, suggestedMonths: months };
+      }
+      return t;
+    });
+    onTasksChange(updatedTasks);
+  };
+
+  const toggleCompletion = (taskId: string, monthIndex: number) => {
+    const updatedTasks = tasks.map(t => {
+      if (t.id === taskId) {
+        const completedMonths = { ...(t.completedMonths || {}) };
+        if (completedMonths[monthIndex]) {
+          delete completedMonths[monthIndex];
+        } else {
+          completedMonths[monthIndex] = {
+            year: new Date().getFullYear(),
+            date: new Date().toISOString(),
+            responsible: 'Sistema'
+          };
+        }
+        return { ...t, completedMonths };
       }
       return t;
     });
@@ -146,24 +167,40 @@ const MaintenanceGrid = memo(({ areaId, tasks, onTasksChange, designation }: Pro
                 </td>
                 {MONTHS.map((_, mIdx) => {
                   const isSuggested = task.suggestedMonths.includes(mIdx);
+                  const isCompleted = task.completedMonths?.[mIdx];
+                  
                   return (
                     <td 
                       key={mIdx} 
-                      className={`p-0 border-r border-slate-100 border-b last:border-r-0 transition-all`}
-                      style={isSuggested ? { backgroundColor: 'color-mix(in srgb, var(--area-color), white 90%)' } : {}}
+                      className={`p-0 border-r border-slate-100 border-b last:border-r-0 transition-all relative group/cell`}
+                      style={isSuggested ? { backgroundColor: 'color-mix(in srgb, var(--area-color), white 92%)' } : {}}
                     >
                       <div 
                         onClick={() => toggleMonth(task.id, mIdx)}
-                        className="w-full h-full min-h-[48px] flex items-center justify-center cursor-pointer hover:bg-slate-50"
+                        onDoubleClick={(e) => { e.preventDefault(); toggleCompletion(task.id, mIdx); }}
+                        className="w-full h-full min-h-[48px] flex items-center justify-center cursor-pointer hover:bg-slate-50 relative"
+                        title={isCompleted ? `Concluído em ${new Date(isCompleted.date).toLocaleDateString()}` : 'Clique para agendar / Double-click para concluir'}
                       >
-                        {isSuggested && (
+                        {isSuggested && !isCompleted && (
                           <div 
-                            className="w-5 h-5 rounded flex items-center justify-center shadow-sm"
+                            className="w-2.5 h-2.5 rounded-full opacity-40"
                             style={{ backgroundColor: 'var(--area-color)' }}
+                          />
+                        )}
+                        
+                        {isCompleted && (
+                          <div 
+                            className="w-6 h-6 rounded-lg flex items-center justify-center shadow-sm bg-emerald-500 scale-110"
                           >
-                            <Check className="w-3 h-3 text-white" strokeWidth={4} />
+                            <Check className="w-4 h-4 text-white" strokeWidth={4} />
                           </div>
                         )}
+
+                        <div className="absolute inset-0 opacity-0 group-hover/cell:opacity-100 flex items-end justify-end p-0.5 pointer-events-none">
+                          <div className="text-[6px] font-bold text-slate-400 bg-white/80 px-1 rounded">
+                            {isCompleted ? 'CONCLUÍDO' : 'AGENDAR'}
+                          </div>
+                        </div>
                       </div>
                     </td>
                   );
@@ -188,10 +225,30 @@ const MaintenanceGrid = memo(({ areaId, tasks, onTasksChange, designation }: Pro
             className="text-[10px] font-bold uppercase tracking-widest mb-2"
             style={{ color: 'var(--area-color)' }}
           >
-            Instruções de Manutenção
+            Instruções & Legenda
+          </div>
+          <div className="flex flex-wrap gap-6 mb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded border border-slate-200" style={{ backgroundColor: 'color-mix(in srgb, var(--area-color), white 92%)' }}></div>
+              <span className="text-[10px] font-bold text-slate-500 uppercase">Sugestão de Mês</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded bg-emerald-500 flex items-center justify-center">
+                <Check className="w-2.5 h-2.5 text-white" />
+              </div>
+              <span className="text-[10px] font-bold text-slate-500 uppercase">Manutenção Realizada</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold text-slate-400 border border-slate-200 px-1 rounded uppercase tracking-tighter">Clique</span>
+              <span className="text-[10px] font-bold text-slate-500 uppercase">Agendar</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold text-slate-400 border border-slate-200 px-1 rounded uppercase tracking-tighter">Doble clique</span>
+              <span className="text-[10px] font-bold text-slate-500 uppercase">Confirmar Execução</span>
+            </div>
           </div>
           <p className="text-xs text-slate-500 leading-relaxed font-medium">
-            Esta tabela estabelece o programa de manutenção do Salão do Reino. Ela deve ser usada em conjunto com as fichas de trabalho e indica a frequência com que cada item deve ser inspecionado. Os meses indicados acima para execução de cada ficha são apenas uma sugestão. Clique e segure no nome do objeto para ver os responsáveis.
+            Esta tabela estabelece o programa de manutenção do Salão do Reino. Clique em um mês para agendar ou remover uma sugestão. Use o clique duplo para marcar como realizado (verde). Clique e segure no nome do objeto para ver os responsáveis.
           </p>
         </div>
       </div>

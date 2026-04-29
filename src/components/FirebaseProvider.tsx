@@ -12,14 +12,23 @@ import {
   doc, 
   deleteDoc,
   serverTimestamp,
-  orderBy
+  orderBy,
+  getDoc
 } from 'firebase/firestore';
-import { db, OperationType, handleFirestoreError, usuarioMock } from '../lib/firebase';
+import { 
+  onAuthStateChanged, 
+  signInWithPopup, 
+  GoogleAuthProvider,
+  signOut,
+  User
+} from 'firebase/auth';
+import { db, auth, OperationType, handleFirestoreError, usuarioMock } from '../lib/firebase';
 import { MaintenanceTask, AreaDesignation, Meeting, MaintenanceArea } from '../types';
 import { AREAS as INITIAL_AREAS, INITIAL_TASKS } from '../constants';
 
 interface FirebaseContextType {
-  user: typeof usuarioMock;
+  user: typeof usuarioMock | null;
+  firebaseUser: User | null;
   loading: boolean;
   tasks: MaintenanceTask[];
   designations: Record<string, AreaDesignation>;
@@ -29,40 +38,100 @@ interface FirebaseContextType {
   updateDesignation: (designation: AreaDesignation) => Promise<void>;
   updateMeeting: (meeting: Meeting) => Promise<void>;
   deleteMeeting: (meetingId: string) => Promise<void>;
+  updateArea: (area: MaintenanceArea) => Promise<void>;
+  deleteArea: (areaId: string) => Promise<void>;
   updateProfile: (updates: Partial<typeof usuarioMock>) => Promise<void>;
+  login: () => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 const FirebaseContext = createContext<FirebaseContextType | undefined>(undefined);
 
 export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [loading, setLoading] = useState(true);
-  const [userProfile, setUserProfile] = useState(usuarioMock);
+  const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
+  const [userProfile, setUserProfile] = useState<typeof usuarioMock | null>(null);
   const [tasks, setTasks] = useState<MaintenanceTask[]>([]);
   const [designations, setDesignations] = useState<Record<string, AreaDesignation>>({});
   const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [areas] = useState<MaintenanceArea[]>(INITIAL_AREAS);
+  const [areas, setAreas] = useState<MaintenanceArea[]>([]);
+
+  const login = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (err) {
+      console.error('Login error:', err);
+    }
+  };
+
+  const logout = () => signOut(auth);
 
   useEffect(() => {
+    const unsubAuth = onAuthStateChanged(auth, async (user) => {
+      setFirebaseUser(user);
+      if (user) {
+        // Sync User Profile
+        const userRef = doc(db, 'users', user.uid);
+        const userSnap = await getDoc(userRef);
+        
+        let profile = userSnap.exists() ? userSnap.data() as typeof usuarioMock : null;
+        
+        if (!profile) {
+          profile = {
+            uid: user.uid,
+            displayName: user.displayName || 'Usuário',
+            email: user.email || '',
+            photoURL: user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName}&background=0284c7&color=fff`,
+            role: 'user'
+          };
+          await setDoc(userRef, profile);
+        }
+        setUserProfile(profile);
+
+        // Bootstrap Admin
+        const adminEmails = ['jaazielss@gmail.com', 'comissao@congregação.com'];
+        if (user.email && adminEmails.includes(user.email)) {
+          await setDoc(doc(db, 'admins', user.uid), {
+            uid: user.uid,
+            email: user.email,
+            role: 'admin',
+            updatedAt: serverTimestamp()
+          }).catch(() => {});
+        }
+      } else {
+        setUserProfile(null);
+        setLoading(false);
+      }
+    });
+
+    return () => unsubAuth();
+  }, []);
+
+  useEffect(() => {
+    if (!firebaseUser) return;
+
     let tasksReady = false;
     let designationsReady = false;
     let meetingsReady = false;
+    let areasReady = false;
     let userReady = false;
 
     const checkReady = () => {
-      if (tasksReady && designationsReady && meetingsReady && userReady) {
+      if (tasksReady && designationsReady && meetingsReady && areasReady && userReady) {
         setLoading(false);
       }
     };
 
     // Load/Sync User Profile
-    const unsubUser = onSnapshot(doc(db, 'users', usuarioMock.uid), (snapshot) => {
+    const unsubUser = onSnapshot(doc(db, 'users', firebaseUser.uid), (snapshot) => {
       if (snapshot.exists()) {
         setUserProfile(snapshot.data() as typeof usuarioMock);
       }
       userReady = true;
       checkReady();
     }, (err) => {
-      handleFirestoreError(err, OperationType.GET, `users/${usuarioMock.uid}`);
+      handleFirestoreError(err, OperationType.GET, `users/${firebaseUser.uid}`);
       userReady = true;
       checkReady();
     });
@@ -70,13 +139,18 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
     // Sync Tasks
     const qTasks = query(collection(db, 'tasks'));
     const unsubTasks = onSnapshot(qTasks, (snapshot) => {
+      if (snapshot.empty && !tasksReady) {
+        // Seed tasks if empty
+        INITIAL_TASKS.forEach(t => {
+          setDoc(doc(db, 'tasks', t.id), t).catch(err => 
+            handleFirestoreError(err, OperationType.WRITE, `tasks/${t.id}`)
+          );
+        });
+      }
       const ts: MaintenanceTask[] = [];
-      snapshot.forEach((doc) => {
-        const data = doc.data() as MaintenanceTask;
-        ts.push(data);
-      });
-      
-      setTasks(ts.length > 0 ? ts : INITIAL_TASKS);
+      snapshot.forEach((doc) => ts.push(doc.data() as MaintenanceTask));
+      // Prioritize data from Firestore if we already have some, otherwise use INITIAL_TASKS as fallback
+      setTasks(ts.length > 0 ? ts : (!tasksReady ? INITIAL_TASKS : []));
       tasksReady = true;
       checkReady();
     }, (err) => {
@@ -116,21 +190,45 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
       checkReady();
     });
 
+    // Sync Areas
+    const qAreas = query(collection(db, 'areas'));
+    const unsubAreas = onSnapshot(qAreas, (snapshot) => {
+      if (snapshot.empty && !areasReady) {
+        // Seed areas if empty
+        INITIAL_AREAS.forEach(a => {
+          setDoc(doc(db, 'areas', a.id), a).catch(err => 
+            handleFirestoreError(err, OperationType.WRITE, `areas/${a.id}`)
+          );
+        });
+      }
+      const as: MaintenanceArea[] = [];
+      snapshot.forEach((doc) => as.push(doc.data() as MaintenanceArea));
+      setAreas(as.length > 0 ? as : (!areasReady ? INITIAL_AREAS : []));
+      areasReady = true;
+      checkReady();
+    }, (err) => {
+      handleFirestoreError(err, OperationType.LIST, 'areas');
+      areasReady = true;
+      checkReady();
+    });
+
     return () => {
       unsubTasks();
       unsubDesignations();
       unsubMeetings();
+      unsubAreas();
       unsubUser();
     };
-  }, []);
+  }, [firebaseUser]);
 
   const updateProfile = async (updates: Partial<typeof usuarioMock>) => {
+    if (!firebaseUser) return;
     try {
-      const newProfile = { ...userProfile, ...updates };
-      await setDoc(doc(db, 'users', usuarioMock.uid), newProfile);
-      setUserProfile(newProfile);
+      const newProfile = { ...(userProfile || {}), ...updates, uid: firebaseUser.uid };
+      await setDoc(doc(db, 'users', firebaseUser.uid), newProfile);
+      setUserProfile(newProfile as any);
     } catch (err) {
-      handleFirestoreError(err, OperationType.WRITE, `users/${usuarioMock.uid}`);
+      handleFirestoreError(err, OperationType.WRITE, `users/${firebaseUser.uid}`);
     }
   };
 
@@ -175,9 +273,29 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
     }
   };
 
+  const updateArea = async (area: MaintenanceArea) => {
+    try {
+      await setDoc(doc(db, 'areas', area.id), {
+        ...area,
+        updatedAt: serverTimestamp()
+      });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `areas/${area.id}`);
+    }
+  };
+
+  const deleteArea = async (areaId: string) => {
+    try {
+      await deleteDoc(doc(db, 'areas', areaId));
+    } catch (err) {
+      handleFirestoreError(err, OperationType.DELETE, `areas/${areaId}`);
+    }
+  };
+
   return (
     <FirebaseContext.Provider value={{
       user: userProfile,
+      firebaseUser,
       loading,
       tasks,
       designations,
@@ -187,7 +305,11 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
       updateDesignation,
       updateMeeting,
       deleteMeeting,
-      updateProfile // Adding this to context
+      updateArea,
+      deleteArea,
+      updateProfile,
+      login,
+      logout
     }}>
       {children}
     </FirebaseContext.Provider>

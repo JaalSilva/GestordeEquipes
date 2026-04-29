@@ -5,12 +5,14 @@
 
 import { initializeApp } from 'firebase/app';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
 
 // CRITICAL: The app will break without this line
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+export const auth = getAuth(app);
 
 // Mock User for the system
 export const usuarioMock = {
@@ -48,8 +50,10 @@ export interface FirestoreErrorInfo {
   operationType: OperationType;
   path: string | null;
   authInfo: {
-    userId: string;
-    email: string;
+    mockUserId: string;
+    realUserId: string | null;
+    email: string | null;
+    emailVerified: boolean;
   };
 }
 
@@ -57,8 +61,10 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
     authInfo: {
-      userId: usuarioMock.uid,
-      email: usuarioMock.email
+      mockUserId: usuarioMock.uid,
+      realUserId: auth.currentUser?.uid || null,
+      email: auth.currentUser?.email || null,
+      emailVerified: auth.currentUser?.emailVerified || false
     },
     operationType,
     path

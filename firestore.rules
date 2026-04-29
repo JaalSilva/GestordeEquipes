@@ -6,21 +6,21 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // Helper functions (Mock Mode)
+    // Helper functions
     function isSignedIn() {
-      return true;
-    }
-
-    function isEmailVerified() {
-      return true;
+      return request.auth != null;
     }
 
     function isOwner(userId) {
-      return true;
+      return isSignedIn() && request.auth.uid == userId;
     }
 
     function isAdmin() {
-      return true;
+      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function isVerifiedAdmin() {
+      return isAdmin() && request.auth.token.email_verified == true;
     }
 
     function incoming() {
@@ -85,28 +85,36 @@ service cloud.firestore {
 
     match /areas/{areaId} {
       allow read: if isSignedIn();
-      allow create, update, delete: if isAdmin() && isValidArea(incoming());
+      allow create, update: if isAdmin() && isValidArea(incoming());
+      allow delete: if isAdmin();
     }
 
     match /tasks/{taskId} {
       allow read: if isSignedIn();
-      allow create, update, delete: if isAdmin() && isValidTask(incoming());
+      allow create, update: if isAdmin() && isValidTask(incoming());
+      allow delete: if isAdmin();
     }
 
     match /designations/{areaId} {
       allow read: if isSignedIn();
-      allow create, update, delete: if isAdmin() && isValidDesignation(incoming());
+      allow create, update: if isAdmin() && isValidDesignation(incoming());
+      allow delete: if isAdmin();
     }
 
     match /meetings/{meetingId} {
       allow read: if isSignedIn();
-      allow create, update, delete: if isAdmin() && isValidMeeting(incoming());
+      allow create, update: if isAdmin() && isValidMeeting(incoming());
+      allow delete: if isAdmin();
     }
     
     // Admin list
     match /admins/{adminId} {
       allow read: if isSignedIn();
-      allow write: if false; // Managed via console or admin scripts
+      // Permite o bootstrap inicial para e-mails conhecidos
+      allow create: if isSignedIn() && adminId == request.auth.uid && 
+                    (request.auth.token.email.matches('(?i).*jaazielss@gmail\\.com') || 
+                     request.auth.token.email.matches('(?i).*comissao.*congrega.*'));
+      allow update, delete: if false; 
     }
   }
 }

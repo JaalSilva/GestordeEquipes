@@ -31,6 +31,7 @@ export interface MaintenanceTask {
   name: string;
   frequency: Frequency;
   suggestedMonths: number[]; // 0-11
+  completedMonths?: Record<number, { year: number, date: string, responsible: string }>;
 }
 
 export interface AreaDesignation {

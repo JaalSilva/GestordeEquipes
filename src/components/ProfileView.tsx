@@ -34,11 +34,35 @@ const THEME_COLORS = [
 ];
 
 const ProfileView: React.FC<ProfileViewProps> = ({ themeColor, onThemeChange }) => {
-  const { user, updateProfile } = useFirebase();
+  const { user, login, logout, updateProfile, firebaseUser } = useFirebase();
   const [isEditingName, setIsEditingName] = useState(false);
   const [newName, setNewName] = useState(user?.displayName || '');
 
-  if (!user) return null;
+  if (!user) {
+    return (
+      <div className="max-w-2xl mx-auto flex flex-col items-center justify-center min-h-[60vh] space-y-8 text-center p-6">
+        <div className="w-24 h-24 bg-brand/10 rounded-full flex items-center justify-center animate-bounce">
+          <User className="w-12 h-12 text-brand" />
+        </div>
+        <div className="space-y-3">
+          <h2 className="text-3xl font-bold text-slate-900">Acesse sua Conta</h2>
+          <p className="text-slate-500 max-w-sm mx-auto">
+            Faça login para gerenciar o sistema de manutenção e sincronizar seus dados na nuvem.
+          </p>
+        </div>
+        <button 
+          onClick={login}
+          className="flex items-center gap-3 px-8 py-4 bg-brand text-white rounded-2xl font-bold shadow-xl shadow-brand/20 hover:scale-[1.02] active:scale-95 transition-all text-lg"
+        >
+          <img src="https://www.google.com/favicon.ico" className="w-5 h-5 bg-white rounded-full p-0.5" alt="Google" />
+          ENTRAR COM GOOGLE
+        </button>
+        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em]">
+          Ambiente Seguro & Criptografado
+        </p>
+      </div>
+    );
+  }
 
   const handleSaveName = async () => {
     if (newName.trim() && newName !== user.displayName) {
@@ -95,10 +119,16 @@ const ProfileView: React.FC<ProfileViewProps> = ({ themeColor, onThemeChange }) 
             </div>
           )}
           <p className="text-slate-500 font-medium">{user.email}</p>
-          <div className="mt-3 flex flex-wrap justify-center md:justify-start gap-2">
-            <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-bold uppercase tracking-wider">
-              Sistema Offline (Modo Local/Mock)
+          <div className="mt-4 flex flex-wrap justify-center md:justify-start gap-3">
+            <span className="px-3 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 border border-emerald-100">
+              <ShieldCheck className="w-3 h-3" /> Autenticado via Google
             </span>
+            <button 
+              onClick={logout}
+              className="px-3 py-1 bg-slate-50 text-slate-500 hover:bg-red-50 hover:text-red-600 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors border border-slate-100"
+            >
+              Sair da Conta
+            </button>
           </div>
         </div>
       </motion.div>
