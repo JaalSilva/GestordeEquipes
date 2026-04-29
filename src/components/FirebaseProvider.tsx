@@ -15,20 +15,12 @@ import {
   orderBy,
   getDoc
 } from 'firebase/firestore';
-import { 
-  onAuthStateChanged, 
-  signInWithPopup, 
-  GoogleAuthProvider,
-  signOut,
-  User
-} from 'firebase/auth';
-import { db, auth, OperationType, handleFirestoreError, usuarioMock } from '../lib/firebase';
+import { db, OperationType, handleFirestoreError, usuarioMock } from '../lib/firebase';
 import { MaintenanceTask, AreaDesignation, Meeting, MaintenanceArea } from '../types';
 import { AREAS as INITIAL_AREAS, INITIAL_TASKS } from '../constants';
 
 interface FirebaseContextType {
   user: typeof usuarioMock | null;
-  firebaseUser: User | null;
   loading: boolean;
   tasks: MaintenanceTask[];
   designations: Record<string, AreaDesignation>;
@@ -49,68 +41,21 @@ const FirebaseContext = createContext<FirebaseContextType | undefined>(undefined
 
 export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [loading, setLoading] = useState(true);
-  const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
-  const [userProfile, setUserProfile] = useState<typeof usuarioMock | null>(null);
+  const [userProfile, setUserProfile] = useState<typeof usuarioMock | null>(usuarioMock);
   const [tasks, setTasks] = useState<MaintenanceTask[]>([]);
   const [designations, setDesignations] = useState<Record<string, AreaDesignation>>({});
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [areas, setAreas] = useState<MaintenanceArea[]>([]);
 
   const login = async () => {
-    const provider = new GoogleAuthProvider();
-    try {
-      await signInWithPopup(auth, provider);
-    } catch (err) {
-      console.error('Login error:', err);
-    }
+    // Free access mode
   };
 
-  const logout = () => signOut(auth);
+  const logout = async () => {
+    // Free access mode
+  };
 
   useEffect(() => {
-    const unsubAuth = onAuthStateChanged(auth, async (user) => {
-      setFirebaseUser(user);
-      if (user) {
-        // Sync User Profile
-        const userRef = doc(db, 'users', user.uid);
-        const userSnap = await getDoc(userRef);
-        
-        let profile = userSnap.exists() ? userSnap.data() as typeof usuarioMock : null;
-        
-        if (!profile) {
-          profile = {
-            uid: user.uid,
-            displayName: user.displayName || 'Usuário',
-            email: user.email || '',
-            photoURL: user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName}&background=0284c7&color=fff`,
-            role: 'user'
-          };
-          await setDoc(userRef, profile);
-        }
-        setUserProfile(profile);
-
-        // Bootstrap Admin
-        const adminEmails = ['jaazielss@gmail.com', 'comissao@congregação.com'];
-        if (user.email && adminEmails.includes(user.email)) {
-          await setDoc(doc(db, 'admins', user.uid), {
-            uid: user.uid,
-            email: user.email,
-            role: 'admin',
-            updatedAt: serverTimestamp()
-          }).catch(() => {});
-        }
-      } else {
-        setUserProfile(null);
-        setLoading(false);
-      }
-    });
-
-    return () => unsubAuth();
-  }, []);
-
-  useEffect(() => {
-    if (!firebaseUser) return;
-
     let tasksReady = false;
     let designationsReady = false;
     let meetingsReady = false;
@@ -123,18 +68,33 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
       }
     };
 
+    // Constant UID for free access
+    const UID = usuarioMock.uid;
+
     // Load/Sync User Profile
-    const unsubUser = onSnapshot(doc(db, 'users', firebaseUser.uid), (snapshot) => {
+    const unsubUser = onSnapshot(doc(db, 'users', UID), (snapshot) => {
       if (snapshot.exists()) {
         setUserProfile(snapshot.data() as typeof usuarioMock);
+      } else {
+        // Initialize profile if not exists
+        setDoc(doc(db, 'users', UID), usuarioMock);
+        setUserProfile(usuarioMock);
       }
       userReady = true;
       checkReady();
     }, (err) => {
-      handleFirestoreError(err, OperationType.GET, `users/${firebaseUser.uid}`);
+      handleFirestoreError(err, OperationType.GET, `users/${UID}`);
       userReady = true;
       checkReady();
     });
+
+    // Bootstrap Admin (ensure the mock user has access if rules require it)
+    setDoc(doc(db, 'admins', UID), {
+      uid: UID,
+      email: usuarioMock.email,
+      role: 'admin',
+      updatedAt: serverTimestamp()
+    }).catch(() => {});
 
     // Sync Tasks
     const qTasks = query(collection(db, 'tasks'));
@@ -219,16 +179,16 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
       unsubAreas();
       unsubUser();
     };
-  }, [firebaseUser]);
+  }, []);
 
   const updateProfile = async (updates: Partial<typeof usuarioMock>) => {
-    if (!firebaseUser) return;
     try {
-      const newProfile = { ...(userProfile || {}), ...updates, uid: firebaseUser.uid };
-      await setDoc(doc(db, 'users', firebaseUser.uid), newProfile);
+      const UID = usuarioMock.uid;
+      const newProfile = { ...(userProfile || usuarioMock), ...updates, uid: UID };
+      await setDoc(doc(db, 'users', UID), newProfile);
       setUserProfile(newProfile as any);
     } catch (err) {
-      handleFirestoreError(err, OperationType.WRITE, `users/${firebaseUser.uid}`);
+      handleFirestoreError(err, OperationType.WRITE, `users/${usuarioMock.uid}`);
     }
   };
 
@@ -295,7 +255,6 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
   return (
     <FirebaseContext.Provider value={{
       user: userProfile,
-      firebaseUser,
       loading,
       tasks,
       designations,

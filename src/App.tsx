@@ -143,6 +143,7 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isImportConfirmOpen, setIsImportConfirmOpen] = useState(false);
+  const [isDisclaimerOpen, setIsDisclaimerOpen] = useState(false);
   const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -313,7 +314,7 @@ export default function App() {
             </div>
           </div>
           
-          {user ? (
+          {user && (
             <button 
               onClick={() => {
                 setView('profile');
@@ -323,23 +324,10 @@ export default function App() {
                 view === 'profile' ? 'border-brand ring-1 ring-brand' : 'border-slate-700 hover:bg-slate-800'
               }`}
             >
-              <img src={user.photoURL || ''} alt="" className="w-8 h-8 rounded-full bg-slate-700" />
+              <img src={user.photoURL || 'https://ui-avatars.com/api/?name=User&background=0284c7&color=fff'} alt="" className="w-8 h-8 rounded-full bg-slate-700" />
               <div className="min-w-0 text-left">
                 <p className="text-xs font-bold text-white truncate">{user.displayName}</p>
                 <p className="text-[9px] text-slate-500 uppercase tracking-tighter font-bold">Ver Perfil</p>
-              </div>
-            </button>
-          ) : (
-            <button 
-              onClick={() => setView('profile')}
-              className="flex items-center gap-3 p-3 w-full bg-brand/10 rounded-xl border border-brand/20 hover:bg-brand/20 transition-all text-left"
-            >
-              <div className="w-8 h-8 rounded-full bg-brand/20 flex items-center justify-center text-brand">
-                <UserIcon className="w-4 h-4" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs font-bold text-brand">Fazer Login</p>
-                <p className="text-[9px] text-brand/60 uppercase tracking-tighter font-bold">Modo Visualização</p>
               </div>
             </button>
           )}
@@ -555,70 +543,60 @@ export default function App() {
         )}
 
         <section className="p-4 lg:p-8 flex-1">
-          {!user && view !== 'manual' && view !== 'profile' ? (
-            <div className="h-full flex flex-col items-center justify-center text-center space-y-6">
-              <div className="p-6 bg-amber-50 text-amber-600 rounded-full">
-                <ShieldCheck className="w-12 h-12" />
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-xl font-bold text-slate-900">Área Restrita</h3>
-                <p className="text-slate-500 max-w-xs mx-auto">
-                  Você precisa estar autenticado como administrador para visualizar e editar os dados de manutenção.
-                </p>
-              </div>
-              <button 
-                onClick={() => setView('profile')}
-                className="px-8 py-3 bg-brand text-white rounded-xl font-bold shadow-lg shadow-brand/20"
-              >
-                IR PARA LOGIN
-              </button>
-            </div>
-          ) : (
-            <AnimatePresence>
-              <motion.div
-                key={`${activeAreaId}-${view}`}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.15 }}
-                className="h-full"
-              >
-                {view === 'schedule' ? (
-                  <MaintenanceGrid 
-                    key={`grid-${activeAreaId}`}
-                    areaId={activeAreaId} 
-                    tasks={tasks}
-                    onTasksChange={handleUpdateTasks}
-                    designation={designations[activeAreaId]}
-                  />
-                ) : view === 'team' ? (
-                  <TeamManager 
-                    key={`team-${activeAreaId}`}
-                    areaId={activeAreaId} 
-                    initialData={designations[activeAreaId]}
-                    onDataChange={updateDesignation}
-                  />
-                ) : view === 'manual' ? (
-                  <SafetyManualView />
-                ) : view === 'calendar' ? (
-                  <MeetingCalendar 
-                    meetings={meetings} 
-                    onSaveMeeting={updateMeeting} 
-                    onDeleteMeeting={deleteMeeting} 
-                  />
-                ) : view === 'profile' ? (
-                  <ProfileView 
-                    themeColor={themeColor} 
-                    onThemeChange={setThemeColor} 
-                  />
-                ) : view === 'areas' ? (
-                  <AreaManager />
-                ) : (
-                  <RiskAnalysisForm />
-                )}
-              </motion.div>
-            </AnimatePresence>
-          )}
+          <AnimatePresence>
+            <motion.div
+              key={`${activeAreaId}-${view}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.15 }}
+              className="h-full"
+            >
+              {view === 'schedule' ? (
+                <MaintenanceGrid 
+                  key={`grid-${activeAreaId}`}
+                  areaId={activeAreaId} 
+                  tasks={tasks}
+                  onTasksChange={handleUpdateTasks}
+                  designation={designations[activeAreaId]}
+                />
+              ) : view === 'team' ? (
+                <TeamManager 
+                  key={`team-${activeAreaId}`}
+                  areaId={activeAreaId} 
+                  initialData={designations[activeAreaId]}
+                  onDataChange={updateDesignation}
+                />
+              ) : view === 'manual' ? (
+                <SafetyManualView />
+              ) : view === 'calendar' ? (
+                <MeetingCalendar 
+                  meetings={meetings} 
+                  onSaveMeeting={updateMeeting} 
+                  onDeleteMeeting={deleteMeeting} 
+                />
+              ) : view === 'profile' ? (
+                <ProfileView 
+                  themeColor={themeColor} 
+                  onThemeChange={setThemeColor} 
+                />
+              ) : view === 'areas' ? (
+                <AreaManager />
+              ) : (
+                <RiskAnalysisForm />
+              )}
+            </motion.div>
+          </AnimatePresence>
         </section>
+
+        <footer className="px-8 py-4 text-right flex justify-end">
+          <button 
+            onClick={() => setIsDisclaimerOpen(true)}
+            className="text-[10px] font-bold text-slate-400 hover:text-brand transition-colors uppercase tracking-widest flex items-center gap-2 group"
+          >
+            <div className="w-1 h-1 bg-slate-200 rounded-full group-hover:bg-brand transition-colors" />
+            Desenvolvido por Jaal Silva
+          </button>
+        </footer>
       </main>
       <MeetingReminder meetings={meetings} />
 
@@ -634,6 +612,16 @@ export default function App() {
         title="IMPORTAR DADOS?"
         confirmLabel="Sim, Importar"
         message="Deseja importar estes dados? Isso irá adicionar novos registros e atualizar os existentes. Os dados atuais que não estão no arquivo serão preservados."
+      />
+
+      <ConfirmationModal 
+        isOpen={isDisclaimerOpen}
+        onClose={() => setIsDisclaimerOpen(false)}
+        onConfirm={() => setIsDisclaimerOpen(false)}
+        variant="info"
+        title="Sobre o Sistema"
+        confirmLabel="Entendi"
+        message="O sistema é sem fins lucrativos e tem por objetivo auxiliar a manutenção do Salão do Reino local, mas nenhuma orientação deve ser ignorada. O sistema não deve ser usado indevidamente e não representa a organização cristã das Testemunhas de Jeová."
       />
     </div>
   );

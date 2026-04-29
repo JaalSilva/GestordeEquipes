@@ -8,15 +8,17 @@ service cloud.firestore {
 
     // Helper functions
     function isSignedIn() {
-      return request.auth != null;
+      // In free access mode, we consider everyone "signed in" to satisfy logic, 
+      // but we actually allow public access below.
+      return true;
     }
 
     function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+      return true;
     }
 
     function isAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      return true;
     }
 
     function isVerifiedAdmin() {
@@ -76,45 +78,27 @@ service cloud.firestore {
 
     // Collection Rules
     match /users/{userId} {
-      allow get: if isSignedIn();
-      allow list: if isAdmin();
-      allow create: if isOwner(userId) && isValidUser(incoming());
-      allow update: if isOwner(userId) && isValidUser(incoming()) && 
-                    incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'updatedAt']);
+      allow read, write: if true;
     }
 
     match /areas/{areaId} {
-      allow read: if isSignedIn();
-      allow create, update: if isAdmin() && isValidArea(incoming());
-      allow delete: if isAdmin();
+      allow read, write: if true;
     }
 
     match /tasks/{taskId} {
-      allow read: if isSignedIn();
-      allow create, update: if isAdmin() && isValidTask(incoming());
-      allow delete: if isAdmin();
+      allow read, write: if true;
     }
 
     match /designations/{areaId} {
-      allow read: if isSignedIn();
-      allow create, update: if isAdmin() && isValidDesignation(incoming());
-      allow delete: if isAdmin();
+      allow read, write: if true;
     }
 
     match /meetings/{meetingId} {
-      allow read: if isSignedIn();
-      allow create, update: if isAdmin() && isValidMeeting(incoming());
-      allow delete: if isAdmin();
+      allow read, write: if true;
     }
     
-    // Admin list
     match /admins/{adminId} {
-      allow read: if isSignedIn();
-      // Permite o bootstrap inicial para e-mails conhecidos
-      allow create: if isSignedIn() && adminId == request.auth.uid && 
-                    (request.auth.token.email.matches('(?i).*jaazielss@gmail\\.com') || 
-                     request.auth.token.email.matches('(?i).*comissao.*congrega.*'));
-      allow update, delete: if false; 
+      allow read, write: if true;
     }
   }
 }
