@@ -14,9 +14,10 @@ const hexToRgb = (hex: string) => {
   return { r, g, b };
 };
 
-export const exportAreaToPDF = async (area: MaintenanceArea, designation: AreaDesignation | null, tasks: MaintenanceTask[]) => {
+export const exportAreaToPDF = async (area: MaintenanceArea, designation: AreaDesignation | null, tasks: MaintenanceTask[], userName?: string) => {
   const doc = new jsPDF('p', 'mm', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
   
   const currentMonthIndex = new Date().getMonth();
   const timestamp = new Date().toLocaleString('pt-BR', { 
@@ -174,13 +175,26 @@ export const exportAreaToPDF = async (area: MaintenanceArea, designation: AreaDe
     doc.setFont('helvetica', 'italic');
     doc.text('Nenhum voluntário designado.', 25, volY);
   }
+
+  // Footer / Signature
+  if (userName) {
+    doc.setDrawColor(200, 200, 200);
+    doc.line(60, pageHeight - 30, pageWidth - 60, pageHeight - 30);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text(userName.toUpperCase(), pageWidth / 2, pageHeight - 24, { align: 'center' });
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(8);
+    doc.text('Responsável pela Manutenção', pageWidth / 2, pageHeight - 20, { align: 'center' });
+  }
   
   doc.save(`relatorio-${area.id}.pdf`);
 };
 
-export const exportAllToPDF = async (allDesignations: Record<string, AreaDesignation>, allTasks: MaintenanceTask[]) => {
+export const exportAllToPDF = async (allDesignations: Record<string, AreaDesignation>, allTasks: MaintenanceTask[], userName?: string) => {
   const doc = new jsPDF('p', 'mm', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
 
   const currentMonthIndex = new Date().getMonth();
   const timestamp = new Date().toLocaleString('pt-BR', { 
@@ -318,6 +332,15 @@ export const exportAllToPDF = async (allDesignations: Record<string, AreaDesigna
     if (volunteers.length > 10) {
       doc.setFontSize(7);
       doc.text(`... outros ${volunteers.length - 10} voluntários`, 25, volY);
+    }
+
+    // Signature on each page (optional, but requested to have the name in the PDF)
+    if (userName) {
+      doc.setDrawColor(200, 200, 200);
+      doc.line(60, pageHeight - 25, pageWidth - 60, pageHeight - 25);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.text(userName.toUpperCase(), pageWidth / 2, pageHeight - 20, { align: 'center' });
     }
   });
   

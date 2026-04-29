@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   User, 
   Palette, 
@@ -11,7 +11,10 @@ import {
   Info, 
   ChevronRight,
   ExternalLink,
-  Github
+  Github,
+  Edit2,
+  Check,
+  X
 } from 'lucide-react';
 import { useFirebase } from './FirebaseProvider';
 import { motion } from 'motion/react';
@@ -31,9 +34,18 @@ const THEME_COLORS = [
 ];
 
 const ProfileView: React.FC<ProfileViewProps> = ({ themeColor, onThemeChange }) => {
-  const { user } = useFirebase();
+  const { user, updateProfile } = useFirebase();
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [newName, setNewName] = useState(user?.displayName || '');
 
   if (!user) return null;
+
+  const handleSaveName = async () => {
+    if (newName.trim() && newName !== user.displayName) {
+      await updateProfile({ displayName: newName });
+    }
+    setIsEditingName(false);
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-12">
@@ -49,7 +61,39 @@ const ProfileView: React.FC<ProfileViewProps> = ({ themeColor, onThemeChange }) 
           className="w-24 h-24 rounded-full ring-4 ring-slate-100 shadow-inner"
         />
         <div className="text-center md:text-left flex-1">
-          <h2 className="text-2xl font-bold text-slate-900">{user.displayName}</h2>
+          {isEditingName ? (
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                className="text-2xl font-bold text-slate-900 border-b-2 border-brand outline-none bg-transparent"
+                autoFocus
+              />
+              <button 
+                onClick={handleSaveName}
+                className="p-1 bg-emerald-100 text-emerald-600 rounded-lg hover:bg-emerald-200"
+              >
+                <Check className="w-5 h-5" />
+              </button>
+              <button 
+                onClick={() => setIsEditingName(false)}
+                className="p-1 bg-red-100 text-red-600 rounded-lg hover:bg-red-200"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center md:justify-start gap-3 group">
+              <h2 className="text-2xl font-bold text-slate-900">{user.displayName}</h2>
+              <button 
+                onClick={() => setIsEditingName(true)}
+                className="p-1.5 text-slate-400 hover:text-brand hover:bg-slate-100 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+              >
+                <Edit2 className="w-4 h-4" />
+              </button>
+            </div>
+          )}
           <p className="text-slate-500 font-medium">{user.email}</p>
           <div className="mt-3 flex flex-wrap justify-center md:justify-start gap-2">
             <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-bold uppercase tracking-wider">

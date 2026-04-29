@@ -112,7 +112,7 @@ export default function App() {
     downloadAnchorNode.remove();
 
     setIsExporting(true);
-    await exportAllToPDF(designations, tasks);
+    await exportAllToPDF(designations, tasks, user?.displayName || '');
     setIsExporting(false);
   };
 
@@ -144,13 +144,13 @@ export default function App() {
 
   const handleExportActivePDF = async () => {
     setIsExporting(true);
-    await exportAreaToPDF(activeArea, designations[activeAreaId] || null, tasks);
+    await exportAreaToPDF(activeArea, designations[activeAreaId] || null, tasks, user?.displayName || '');
     setIsExporting(false);
   };
 
   const handleExportAllPDF = async () => {
     setIsExporting(true);
-    await exportAllToPDF(designations, tasks);
+    await exportAllToPDF(designations, tasks, user?.displayName || '');
     setIsExporting(false);
   };
 
@@ -226,7 +226,7 @@ export default function App() {
                   key={area.id}
                   onClick={() => {
                     setActiveAreaId(area.id);
-                    if (view === 'manual' || view === 'risk' || view === 'calendar') setView('schedule');
+                    setView('schedule'); // Force schedule view on area change
                     setSidebarOpen(false);
                   }}
                   style={isActive ? { backgroundColor: area.color } : {}}
@@ -392,13 +392,12 @@ export default function App() {
         )}
 
         <section className="p-4 lg:p-8 flex-1">
-          <AnimatePresence mode="wait">
+          <AnimatePresence>
             <motion.div
               key={`${activeAreaId}-${view}`}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.15 }}
               className="h-full"
             >
               {view === 'schedule' ? (

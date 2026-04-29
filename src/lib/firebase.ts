@@ -15,9 +15,9 @@ export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 // Mock User for the system
 export const usuarioMock = {
   uid: "usuario_teste",
-  displayName: "Usuário Teste",
-  email: "teste@email.com",
-  photoURL: "https://ui-avatars.com/api/?name=Usuario+Teste&background=random",
+  displayName: "Comissão de Funcionamento",
+  email: "comissao@congregação.com",
+  photoURL: "https://ui-avatars.com/api/?name=Comissao+Funcionamento&background=0284c7&color=fff",
   role: "admin"
 };
 

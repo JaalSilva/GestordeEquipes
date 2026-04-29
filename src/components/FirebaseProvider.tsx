@@ -29,18 +29,44 @@ interface FirebaseContextType {
   updateDesignation: (designation: AreaDesignation) => Promise<void>;
   updateMeeting: (meeting: Meeting) => Promise<void>;
   deleteMeeting: (meetingId: string) => Promise<void>;
+  updateProfile: (updates: Partial<typeof usuarioMock>) => Promise<void>;
 }
 
 const FirebaseContext = createContext<FirebaseContextType | undefined>(undefined);
 
 export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [userProfile, setUserProfile] = useState(usuarioMock);
   const [tasks, setTasks] = useState<MaintenanceTask[]>([]);
   const [designations, setDesignations] = useState<Record<string, AreaDesignation>>({});
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [areas] = useState<MaintenanceArea[]>(INITIAL_AREAS);
 
   useEffect(() => {
+    let tasksReady = false;
+    let designationsReady = false;
+    let meetingsReady = false;
+    let userReady = false;
+
+    const checkReady = () => {
+      if (tasksReady && designationsReady && meetingsReady && userReady) {
+        setLoading(false);
+      }
+    };
+
+    // Load/Sync User Profile
+    const unsubUser = onSnapshot(doc(db, 'users', usuarioMock.uid), (snapshot) => {
+      if (snapshot.exists()) {
+        setUserProfile(snapshot.data() as typeof usuarioMock);
+      }
+      userReady = true;
+      checkReady();
+    }, (err) => {
+      handleFirestoreError(err, OperationType.GET, `users/${usuarioMock.uid}`);
+      userReady = true;
+      checkReady();
+    });
+
     // Sync Tasks
     const qTasks = query(collection(db, 'tasks'));
     const unsubTasks = onSnapshot(qTasks, (snapshot) => {
@@ -50,12 +76,14 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
         ts.push(data);
       });
       
-      if (ts.length === 0) {
-        setTasks(INITIAL_TASKS);
-      } else {
-        setTasks(ts);
-      }
-    }, (err) => handleFirestoreError(err, OperationType.LIST, 'tasks'));
+      setTasks(ts.length > 0 ? ts : INITIAL_TASKS);
+      tasksReady = true;
+      checkReady();
+    }, (err) => {
+      handleFirestoreError(err, OperationType.LIST, 'tasks');
+      tasksReady = true;
+      checkReady();
+    });
 
     // Sync Designations
     const qDesignations = query(collection(db, 'designations'));
@@ -66,7 +94,13 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
         ds[data.areaId] = data;
       });
       setDesignations(ds);
-    }, (err) => handleFirestoreError(err, OperationType.LIST, 'designations'));
+      designationsReady = true;
+      checkReady();
+    }, (err) => {
+      handleFirestoreError(err, OperationType.LIST, 'designations');
+      designationsReady = true;
+      checkReady();
+    });
 
     // Sync Meetings
     const qMeetings = query(collection(db, 'meetings'), orderBy('date', 'asc'));
@@ -74,14 +108,31 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
       const ms: Meeting[] = [];
       snapshot.forEach((doc) => ms.push(doc.data() as Meeting));
       setMeetings(ms);
-    }, (err) => handleFirestoreError(err, OperationType.LIST, 'meetings'));
+      meetingsReady = true;
+      checkReady();
+    }, (err) => {
+      handleFirestoreError(err, OperationType.LIST, 'meetings');
+      meetingsReady = true;
+      checkReady();
+    });
 
     return () => {
       unsubTasks();
       unsubDesignations();
       unsubMeetings();
+      unsubUser();
     };
   }, []);
+
+  const updateProfile = async (updates: Partial<typeof usuarioMock>) => {
+    try {
+      const newProfile = { ...userProfile, ...updates };
+      await setDoc(doc(db, 'users', usuarioMock.uid), newProfile);
+      setUserProfile(newProfile);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `users/${usuarioMock.uid}`);
+    }
+  };
 
   const updateTask = async (task: MaintenanceTask) => {
     try {
@@ -126,7 +177,7 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
 
   return (
     <FirebaseContext.Provider value={{
-      user: usuarioMock,
+      user: userProfile,
       loading,
       tasks,
       designations,
@@ -135,7 +186,8 @@ export const FirebaseProvider: React.FC<{ children: ReactNode }> = ({ children }
       updateTask,
       updateDesignation,
       updateMeeting,
-      deleteMeeting
+      deleteMeeting,
+      updateProfile // Adding this to context
     }}>
       {children}
     </FirebaseContext.Provider>
